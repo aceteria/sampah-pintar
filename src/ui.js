@@ -33,7 +33,10 @@ export function initUI() {
   els.tipsDesc = document.getElementById('tips-desc');
   els.confidenceFill = document.getElementById('confidence-fill');
   els.errorMessage = document.getElementById('error-message');
-  els.resultCard = document.getElementById('result-card');
+  els.statDecompose = document.getElementById('stat-decompose');
+  els.statConfidence = document.getElementById('stat-confidence');
+  els.cardImpact = document.getElementById('card-impact');
+  els.cardTips = document.getElementById('card-tips');
 
   return els;
 }
@@ -87,31 +90,36 @@ export function stopFunFacts() {
   }
 }
 
+// SVG icon templates (Phosphor-style, stroke 16)
+const SVG_LEAF = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M216,40H176A104.11,104.11,0,0,0,72,144v24H48a8,8,0,0,0,0,16H72v24a8,8,0,0,0,16,0V184h24A104.11,104.11,0,0,0,216,80Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path></svg>';
+const SVG_RECYCLE = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M96,208H72A56,56,0,0,1,72,96l29.71,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="60 128 92 96 124 128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline><path d="M160,208h24a56,56,0,0,0,48.49-84" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="196 128 164 160 132 128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline><path d="M128,48a56.06,56.06,0,0,1,48.49,28" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="160 96 128 48 96 96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline></svg>';
+const SVG_WARNING = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z" fill="currentColor"></path></svg>';
+
 export function renderResult(data, imageSrc, lang) {
   if (els.resultThumbnail) els.resultThumbnail.src = imageSrc;
   
   // Colors and Icons based on Kategori
-  let icon = '🌿'; // default ORGANIK
+  let iconSvg = SVG_LEAF;
   let color = 'var(--cat-organik)';
   let catText = data.kategori || 'ORGANIK';
   
   if (els.resultView) els.resultView.classList.remove('theme-organik', 'theme-anorganik', 'theme-b3');
 
   if (data.kategori === 'ORGANIK' || data.kategori === 'ORGANIC') {
-    icon = '🌿';
+    iconSvg = SVG_LEAF;
     color = 'var(--cat-organik)';
     if (els.resultView) els.resultView.classList.add('theme-organik');
   } else if (data.kategori === 'ANORGANIK' || data.kategori === 'INORGANIC') {
-    icon = '♻️';
+    iconSvg = SVG_RECYCLE;
     color = 'var(--cat-anorganik)';
     if (els.resultView) els.resultView.classList.add('theme-anorganik');
   } else if (data.kategori === 'B3' || data.kategori === 'HAZARDOUS') {
-    icon = '⚠️';
+    iconSvg = SVG_WARNING;
     color = 'var(--cat-b3)';
     if (els.resultView) els.resultView.classList.add('theme-b3');
   }
 
-  if (els.categoryIcon) els.categoryIcon.textContent = icon;
+  if (els.categoryIcon) els.categoryIcon.innerHTML = iconSvg;
   if (els.categoryName) els.categoryName.textContent = catText;
   if (els.categoryBadge) {
     els.categoryBadge.style.color = color;
@@ -122,6 +130,12 @@ export function renderResult(data, imageSrc, lang) {
   if (els.decomposeTime) els.decomposeTime.textContent = data.waktu_terurai || '';
   if (els.impactDesc) els.impactDesc.innerHTML = formatText(data.dampak || '');
   if (els.tipsDesc) els.tipsDesc.innerHTML = formatText(data.tips || '');
+  
+  // Set --card-accent on all themed elements
+  const accentEls = [els.statDecompose, els.statConfidence, els.cardImpact, els.cardTips];
+  accentEls.forEach(el => {
+    if (el) el.style.setProperty('--card-accent', color);
+  });
   
   if (els.confidenceFill) {
     let width = '25%'; // RENDAH/LOW
@@ -134,16 +148,19 @@ export function renderResult(data, imageSrc, lang) {
     } else {
       els.confidenceFill.style.backgroundColor = 'var(--cat-b3)';
     }
-    // Need a tiny delay for CSS transition to trigger if it was just reset to 0
     els.confidenceFill.style.width = '0%';
     requestAnimationFrame(() => {
       els.confidenceFill.style.width = width;
     });
   }
   
-  if (els.resultCard) {
-    els.resultCard.style.setProperty('--card-accent', color);
-  }
+  // Re-trigger stagger animations
+  const staggerItems = document.querySelectorAll('#result-view .stagger-item');
+  staggerItems.forEach(el => {
+    el.style.animation = 'none';
+    el.offsetHeight; // force reflow
+    el.style.animation = '';
+  });
 }
 
 export function updateLangButtons(lang) {
