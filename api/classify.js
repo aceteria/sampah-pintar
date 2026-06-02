@@ -109,9 +109,29 @@ export default async function handler(req, res) {
     // Strip markdown JSON blocks if present
     const cleanedText = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
     classified = JSON.parse(cleanedText);
+    
+    // Schema validation and fallbacks
+    const isErrorOrEmpty = ['TIDAK_TERDETEKSI', 'TIDAK_JELAS', 'NOT_DETECTED', 'UNCLEAR'].includes(classified.kategori);
+    if (!isErrorOrEmpty) {
+      classified.warna = classified.warna || (classified.kategori === 'ORGANIK' || classified.kategori === 'ORGANIC' ? '#4A7C59' : classified.kategori === 'B3' || classified.kategori === 'HAZARDOUS' ? '#C75C5C' : '#5B7FA5');
+      classified.nama_benda = classified.nama_benda || 'Unknown Object';
+      classified.confidence = classified.confidence || 'RENDAH';
+      classified.waktu_terurai = classified.waktu_terurai || 'Unknown time';
+      classified.dampak = classified.dampak || 'No impact information provided.';
+      classified.tips = classified.tips || 'Dispose of responsibly.';
+    }
   } catch {
     console.error('[classify] Failed to parse JSON output:', rawText);
-    return res.status(500).json({ error: 'Invalid AI response' });
+    // Return a partial failure rather than a 500 crash so UI handles it gracefully
+    return res.status(200).json({
+      kategori: 'TIDAK_JELAS',
+      warna: '#888888',
+      nama_benda: 'Parse Error',
+      confidence: 'RENDAH',
+      waktu_terurai: '',
+      dampak: 'The AI provided an invalid format.',
+      tips: 'Please try again.'
+    });
   }
 
   // ── Return result ─────────────────────────────────────────────────────────
@@ -150,6 +170,7 @@ DEFINISI KATEGORI:
 • ANORGANIK (#5B7FA5)  — Bahan yang tidak dapat terurai secara alami atau memerlukan waktu sangat
                          lama. Dapat didaur ulang. Contoh: botol plastik, kaleng aluminium, kaca,
                          kardus bersih, kertas bersih, logam, karet, styrofoam.
+                         PENTING: Kemasan minuman kotak (Tetra Pak) adalah ANORGANIK, bukan Organik.
 
 • B3 (#C75C5C)         — Bahan Berbahaya dan Beracun. Mengandung zat kimia berbahaya yang berisiko
                          mencemari tanah, air, dan udara. Contoh: baterai, lampu neon/CFL,
@@ -229,6 +250,7 @@ CATEGORY DEFINITIONS:
 • INORGANIC (#5B7FA5)  — Materials that do not decompose naturally or take an extremely long time.
                          Can be recycled. Examples: plastic bottles, aluminum cans, glass, clean
                          cardboard, clean paper, metal, rubber, styrofoam.
+                         IMPORTANT: Beverage cartons (Tetra Pak) are INORGANIC, not Organic.
 
 • HAZARDOUS (#C75C5C)  — Hazardous and Toxic Waste. Contains chemical substances that risk
                          contaminating soil, water, and air. Examples: batteries, fluorescent/CFL

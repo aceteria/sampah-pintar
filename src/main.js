@@ -92,9 +92,17 @@ async function handleFileUpload(event) {
   reader.readAsDataURL(file);
 }
 
-async function runClassification(imageData) {
+async function runClassification(imageData, retryCount = 0) {
   showLoading(imageData);
-  startFunFacts(translations[getCurrentLang()].fun_facts);
+  if (retryCount === 0) {
+    startFunFacts(translations[getCurrentLang()].fun_facts);
+  } else {
+    // Show progress indicator text during retry
+    const loadingText = document.querySelector('#loading-overlay h2');
+    if (loadingText) {
+      loadingText.textContent = getCurrentLang() === 'en' ? 'Retrying analysis...' : 'Mencoba ulang analisis...';
+    }
+  }
   
   try {
     const result = await classify(imageData, getCurrentLang());
@@ -114,6 +122,12 @@ async function runClassification(imageData) {
     renderResult(result, imageData, getCurrentLang());
     switchScreen('result');
   } catch (err) {
+    if (retryCount < 1) {
+      console.warn('Classification failed, retrying once...', err);
+      // Retry once automatically
+      return runClassification(imageData, retryCount + 1);
+    }
+    
     hideLoading();
     stopFunFacts();
     const msg = err.message === 'TIMEOUT' ? t('error_timeout') : t('error_generic');
