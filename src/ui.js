@@ -95,15 +95,20 @@ export function renderResult(data, imageSrc, lang) {
   let color = 'var(--cat-organik)';
   let catText = data.kategori || 'ORGANIK';
   
+  if (els.resultView) els.resultView.classList.remove('theme-organik', 'theme-anorganik', 'theme-b3');
+
   if (data.kategori === 'ORGANIK' || data.kategori === 'ORGANIC') {
     icon = '🌿';
     color = 'var(--cat-organik)';
+    if (els.resultView) els.resultView.classList.add('theme-organik');
   } else if (data.kategori === 'ANORGANIK' || data.kategori === 'INORGANIC') {
     icon = '♻️';
     color = 'var(--cat-anorganik)';
+    if (els.resultView) els.resultView.classList.add('theme-anorganik');
   } else if (data.kategori === 'B3' || data.kategori === 'HAZARDOUS') {
     icon = '⚠️';
     color = 'var(--cat-b3)';
+    if (els.resultView) els.resultView.classList.add('theme-b3');
   }
 
   if (els.categoryIcon) els.categoryIcon.textContent = icon;
@@ -115,8 +120,8 @@ export function renderResult(data, imageSrc, lang) {
   
   if (els.itemName) els.itemName.textContent = data.nama_benda || '';
   if (els.decomposeTime) els.decomposeTime.textContent = data.waktu_terurai || '';
-  if (els.impactDesc) els.impactDesc.textContent = data.dampak || '';
-  if (els.tipsDesc) els.tipsDesc.textContent = data.tips || '';
+  if (els.impactDesc) els.impactDesc.innerHTML = formatText(data.dampak || '');
+  if (els.tipsDesc) els.tipsDesc.innerHTML = formatText(data.tips || '');
   
   if (els.confidenceFill) {
     let width = '25%'; // RENDAH/LOW
@@ -147,6 +152,39 @@ export function updateLangButtons(lang) {
       btn.textContent = lang.toUpperCase();
     });
   }
+}
+
+function formatText(text) {
+  if (!text) return '';
+  const lines = text.split('\n');
+  let html = '';
+  let inList = false;
+  
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+    
+    if (line.match(/^[-*]\s/) || line.match(/^\d+\.\s/)) {
+      if (!inList) {
+        html += '<ul style="padding-left: 1.2rem; margin-top: 0.3rem; margin-bottom: 0.3rem;">';
+        inList = true;
+      }
+      let content = line.replace(/^[-*]\s/, '').replace(/^\d+\.\s/, '');
+      html += `<li style="margin-bottom: 0.2rem;">${content}</li>`;
+    } else {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      html += `<p style="margin-bottom: 0.3rem;">${line}</p>`;
+    }
+  });
+  
+  if (inList) {
+    html += '</ul>';
+  }
+  
+  return html;
 }
 
 export function getEls() { return els; }

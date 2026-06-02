@@ -15,9 +15,9 @@ export default async function handler(req, res) {
   }
 
   // ── API key guard ─────────────────────────────────────────────────────────
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) {
-    console.error('[classify] GEMINI_API_KEY is not set');
+  const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
+  if (!NVIDIA_API_KEY) {
+    console.error('[classify] NVIDIA_API_KEY is not set');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
@@ -39,68 +39,78 @@ export default async function handler(req, res) {
     ? buildPromptEN()
     : buildPromptID();
 
-  // ── Call Gemini API ───────────────────────────────────────────────────────
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+  // ── Call NVIDIA NIM API ───────────────────────────────────────────────────
+  const nimUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
   const requestBody = {
-    contents: [
+    model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    messages: [
       {
-        parts: [
-          { text: prompt },
+        role: "user",
+        content: [
           {
-            inline_data: {
-              mime_type: 'image/jpeg',
-              data: base64Data,
-            },
+            type: "text",
+            text: prompt
           },
-        ],
-      },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${base64Data}`
+            }
+          }
+        ]
+      }
     ],
-    generationConfig: {
-      temperature: 0.2,
-      response_mime_type: 'application/json',
-    },
+    temperature: 0.2,
+    top_p: 0.95,
+    max_tokens: 4096,
+    reasoning_budget: 1024,
+    chat_template_kwargs: { "enable_thinking": true }
   };
 
-  let geminiResponse;
+  let nimResponse;
   try {
-    geminiResponse = await fetch(geminiUrl, {
+    nimResponse = await fetch(nimUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${NVIDIA_API_KEY}`
+      },
       body: JSON.stringify(requestBody),
     });
   } catch (networkErr) {
-    console.error('[classify] Network error calling Gemini:', networkErr);
+    console.error('[classify] Network error calling NVIDIA NIM:', networkErr);
     return res.status(500).json({ error: 'Internal server error' });
   }
 
-  if (!geminiResponse.ok) {
-    const errorText = await geminiResponse.text().catch(() => '');
+  if (!nimResponse.ok) {
+    const errorText = await nimResponse.text().catch(() => '');
     console.error(
-      `[classify] Gemini returned ${geminiResponse.status}: ${errorText}`
+      `[classify] NVIDIA NIM returned ${nimResponse.status}: ${errorText}`
     );
     return res
-      .status(geminiResponse.status)
+      .status(nimResponse.status)
       .json({ error: 'AI service error' });
   }
 
-  // ── Parse Gemini response ─────────────────────────────────────────────────
-  let geminiJson;
+  // ── Parse NVIDIA NIM response ─────────────────────────────────────────────
+  let nimJson;
   try {
-    geminiJson = await geminiResponse.json();
+    nimJson = await nimResponse.json();
   } catch {
-    console.error('[classify] Failed to parse Gemini HTTP response as JSON');
+    console.error('[classify] Failed to parse NVIDIA NIM HTTP response as JSON');
     return res.status(500).json({ error: 'Invalid AI response' });
   }
 
-  const rawText =
-    geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const rawText = nimJson.choices?.[0]?.message?.content ?? '';
 
   let classified;
   try {
-    classified = JSON.parse(rawText);
+    // Strip markdown JSON blocks if present
+    const cleanedText = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    classified = JSON.parse(cleanedText);
   } catch {
-    console.error('[classify] Failed to JSON.parse Gemini text output:', rawText);
+    console.error('[classify] Failed to parse JSON output:', rawText);
     return res.status(500).json({ error: 'Invalid AI response' });
   }
 
