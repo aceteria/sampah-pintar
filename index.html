@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>EcoScan</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       SPLASH SCREEN
+  ============================================================ -->
+  <div id="splash" class="screen">
+    <div class="splash-content">
+      <span class="hero-icon">🍃</span>
+      <h1 class="title">EcoScan</h1>
+      <p class="tagline" data-i18n="tagline"></p>
+      <button id="btn-start" class="btn-primary" data-i18n="tap_to_start"></button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       CAMERA VIEW
+  ============================================================ -->
+  <div id="camera-view" class="screen">
+    <header>
+      <span class="logo">🍃 EcoScan</span>
+      <button id="btn-lang" class="lang-toggle glass-pill"></button>
+    </header>
+
+    <div class="camera-container">
+      <video id="video-feed" playsinline muted autoplay></video>
+      <canvas id="capture-canvas" hidden style="display:none;"></canvas>
+      <input
+        id="file-upload"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        style="display:none;"
+      />
+
+      <div class="camera-overlay">
+        <div class="scan-frame">
+          <div class="scan-frame-inner"></div>
+        </div>
+      </div>
+
+      <div class="camera-controls">
+        <span class="hint-text glass-pill" data-i18n="scan_hint"></span>
+        <button id="btn-scan" class="btn-capture">
+          <div class="inner-circle"></div>
+        </button>
+        <label class="btn-upload-label" for="file-upload" data-i18n="upload_photo"></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       RESULT VIEW
+  ============================================================ -->
+  <div id="result-view" class="screen">
+    <header>
+      <span class="logo">🍃 EcoScan</span>
+      <button id="btn-lang-result" class="lang-toggle glass-pill"></button>
+    </header>
+
+    <div class="result-container">
+      <!-- Result header: thumbnail + meta -->
+      <div class="result-header">
+        <div class="result-img-wrapper">
+          <img id="result-thumbnail" class="result-img" alt="Scanned waste" />
+        </div>
+        <div class="result-meta">
+          <div class="result-badge" id="category-badge">
+            <span id="category-icon"></span>
+            <span id="category-name"></span>
+          </div>
+          <h2 id="item-name"></h2>
+        </div>
+      </div>
+
+      <!-- Info card -->
+      <div class="glass-panel result-card" id="result-card">
+        <div class="info-row" id="row-waktu-terurai">
+          <label><span data-i18n="time_to_decompose"></span></label>
+          <span id="decompose-time"></span>
+        </div>
+        <div class="info-row" id="row-dampak">
+          <label><span data-i18n="impact"></span></label>
+          <span id="impact-desc"></span>
+        </div>
+        <div class="info-row" id="row-tips">
+          <label><span data-i18n="tips"></span></label>
+          <span id="tips-desc"></span>
+        </div>
+        <div class="info-row" id="row-confidence">
+          <label><span data-i18n="confidence"></span></label>
+          <div class="confidence-bar">
+            <div class="confidence-fill" id="confidence-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scan again -->
+      <button id="btn-scan-again" class="btn-secondary glass-panel" data-i18n="scan_again"></button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LOADING OVERLAY
+  ============================================================ -->
+  <div id="loading-overlay" class="full-overlay hidden">
+    <div class="overlay-content">
+      <div class="img-preview-box">
+        <img id="loading-preview-img" alt="Scanning preview" />
+        <div class="scanning-line"></div>
+      </div>
+      <h2 data-i18n="analyzing"></h2>
+      <p id="fun-fact" class="fun-fact-text"></p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       ERROR OVERLAY
+  ============================================================ -->
+  <div id="error-overlay" class="full-overlay hidden">
+    <div class="overlay-content glass-panel">
+      <span class="error-icon">⚠️</span>
+      <h2>Oops!</h2>
+      <p id="error-message"></p>
+      <button id="btn-retry" class="btn-primary" data-i18n="retry"></button>
+      <button id="btn-error-cancel" class="btn-ghost" data-i18n="cancel"></button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
