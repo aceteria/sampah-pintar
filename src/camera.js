@@ -3,6 +3,7 @@
 export let videoEl = null;
 export let streamRef = null;
 export let canvasEl = null;
+export let currentFacingMode = 'environment';
 
 /**
  * Initialises the camera stream and binds it to the provided video element.
@@ -19,7 +20,7 @@ export async function initCamera(videoElement, canvasElement) {
 
   const constraints = {
     video: {
-      facingMode: 'environment',
+      facingMode: currentFacingMode,
       width: { ideal: 1280 },
       height: { ideal: 720 },
     },
@@ -92,6 +93,16 @@ export function stopCamera() {
   if (videoEl) {
     videoEl.srcObject = null;
   }
+}
+
+/**
+ * Toggles the camera between environment (back) and user (front).
+ * @returns {Promise<void>}
+ */
+export async function toggleCamera() {
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  stopCamera();
+  await initCamera(videoEl, canvasEl);
 }
 
 /**

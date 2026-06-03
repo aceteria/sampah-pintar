@@ -8,9 +8,10 @@ export function initUI() {
   els.resultView = document.getElementById('result-view');
   
   els.btnStart = document.getElementById('btn-start');
+  els.btnLang = document.querySelectorAll('.lang-toggle');
   els.btnScan = document.getElementById('btn-scan');
+  els.btnSwitchCamera = document.getElementById('btn-switch-camera');
   els.btnScanAgain = document.getElementById('btn-scan-again');
-  els.btnLang = document.querySelectorAll('.lang-toggle'); // Both instances
   els.btnRetry = document.getElementById('btn-retry');
   els.btnErrorCancel = document.getElementById('btn-error-cancel');
   

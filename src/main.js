@@ -1,6 +1,6 @@
 import './style.css';
 import { t, setLang, toggleLang, getCurrentLang, translations } from './i18n.js';
-import { initCamera, captureFrame, stopCamera, isCameraActive } from './camera.js';
+import { initCamera, captureFrame, stopCamera, isCameraActive, toggleCamera } from './camera.js';
 import { classify } from './classifier.js';
 import { initUI, switchScreen, showLoading, hideLoading, showError, hideError,
          startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls, showFeedbackThanks } from './ui.js';
@@ -28,6 +28,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (els.btnScan) {
     els.btnScan.addEventListener('click', handleScan);
+  }
+
+  if (els.btnSwitchCamera) {
+    els.btnSwitchCamera.addEventListener('click', async () => {
+      await toggleCamera();
+    });
   }
 
   if (els.btnScanAgain) {
