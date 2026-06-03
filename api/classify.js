@@ -4,12 +4,7 @@ export const config = {
   runtime: 'edge',
 };
 
-export default async function handler(req, res) {
-  // ── CORS headers ──────────────────────────────────────────────────────────
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
+export default async function handler(req) {
   // ── Preflight ─────────────────────────────────────────────────────────────
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
