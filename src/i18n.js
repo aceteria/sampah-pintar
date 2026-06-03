@@ -24,6 +24,8 @@ export const translations = {
     feedback_yes: 'Benar',
     feedback_no: 'Salah',
     feedback_thanks: 'Terima kasih atas masukannya!',
+    gamification_title: 'Pahlawan Lingkungan',
+    gamification_msg: (weight, category, score) => `Terima kasih! Kamu baru saja menyelamatkan lingkungan dari ${weight}kg limbah ${category}. Total skor sekolah hari ini: ${score} poin!`,
     fun_facts: [
       'Indonesia menghasilkan sekitar 175.000 ton sampah setiap harinya.',
       'Hanya 7% sampah di Indonesia yang berhasil didaur ulang setiap tahunnya.',
@@ -55,6 +57,8 @@ export const translations = {
     feedback_yes: 'Correct',
     feedback_no: 'Incorrect',
     feedback_thanks: 'Thank you for your feedback!',
+    gamification_title: 'Eco Hero',
+    gamification_msg: (weight, category, score) => `Thank you! You just saved the environment from ${weight}kg of ${category} waste. Total school score today: ${score} points!`,
     fun_facts: [
       'Indonesia generates approximately 175,000 tons of waste every single day.',
       'Only 7% of Indonesia\'s waste is successfully recycled each year.',

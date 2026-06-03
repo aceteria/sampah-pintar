@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
     els.fileUpload.addEventListener('change', handleFileUpload);
   }
 
+  // Initialize Gamification State
+  initGamificationState();
+
   // Feedback Event Listeners
   if (els.btnFeedbackYes) {
     els.btnFeedbackYes.addEventListener('click', () => handleFeedback(true));
@@ -153,6 +156,10 @@ async function runClassification(imageData, retryCount = 0) {
     stopCamera();
     lastResult = result;
     lastImage = imageData;
+    
+    // Gamification step
+    handleGamification(result);
+    
     renderResult(result, imageData, getCurrentLang());
     switchScreen('result');
   } catch (err) {
@@ -168,3 +175,66 @@ async function runClassification(imageData, retryCount = 0) {
     showError(msg);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gamification Logic
+// ─────────────────────────────────────────────────────────────────────────────
+
+function initGamificationState() {
+  const today = new Date().toLocaleDateString();
+  let state = JSON.parse(localStorage.getItem('ecoscan_gamification') || '{}');
+  
+  if (state.date !== today) {
+    state = {
+      date: today,
+      user_weight_kg: 0.0,
+      user_items_count: 0,
+      base_school_score: Math.floor(Math.random() * 500) + 1000 // random base score (1000-1500)
+    };
+    localStorage.setItem('ecoscan_gamification', JSON.stringify(state));
+  }
+}
+
+function handleGamification(result) {
+  if (!result || !result.kategori) return;
+  if (result.kategori === 'TIDAK_TERDETEKSI' || result.kategori === 'TIDAK_JELAS') return;
+  if (result.kategori === 'NOT_DETECTED' || result.kategori === 'UNCLEAR') return;
+
+  const state = JSON.parse(localStorage.getItem('ecoscan_gamification') || '{}');
+  
+  // Assign weight based on category (B3: 0.5kg, Organik: 0.2kg, Anorganik: 0.1kg)
+  let weight = 0.1;
+  let catLower = result.kategori.toLowerCase();
+  
+  if (catLower.includes('b3') || catLower.includes('hazardous')) {
+    weight = 0.5;
+  } else if (catLower.includes('organik') || catLower.includes('organic')) {
+    weight = 0.2;
+  }
+  
+  // Format category string
+  let displayCategory = 'Anorganik';
+  if (catLower.includes('b3') || catLower.includes('hazardous')) displayCategory = 'B3';
+  if (catLower.includes('organik') || catLower.includes('organic')) displayCategory = 'Organik';
+
+  state.user_items_count += 1;
+  state.user_weight_kg += weight;
+  localStorage.setItem('ecoscan_gamification', JSON.stringify(state));
+
+  // School score = base + (user_items_count * 50)
+  const currentSchoolScore = state.base_school_score + (state.user_items_count * 50);
+
+  // Update UI
+  const gamificationStats = getEls().gamificationStats;
+  const gamificationDesc = getEls().gamificationDesc;
+
+  if (gamificationStats && gamificationDesc) {
+    const lang = getCurrentLang();
+    const itemsLabel = lang === 'en' ? 'Items Disposed Today' : 'Total Item Terbuang Hari Ini';
+    gamificationStats.textContent = `${itemsLabel}: ${state.user_items_count}`;
+    
+    // gamification_msg(weight, category, score)
+    gamificationDesc.textContent = t('gamification_msg')(weight.toFixed(1), displayCategory, currentSchoolScore.toLocaleString());
+  }
+}
+

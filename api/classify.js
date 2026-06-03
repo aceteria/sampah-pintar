@@ -128,9 +128,6 @@ export default async function handler(req) {
       if (!lookupTable[matId]) matId = 'UNKNOWN';
       classified.waktu_terurai = lookupTable[matId];
       classified.material_id = matId; // normalize it but keep it
-
-      classified.dampak = classified.dampak || 'No impact information provided.';
-      classified.tips = classified.tips || 'Dispose of responsibly.';
       classified.reasoning_summary = classified.reasoning_summary || 'Analyzed via image recognition.';
     } else {
       // Empty or error case mapping

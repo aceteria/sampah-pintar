@@ -30,14 +30,13 @@ export function initUI() {
   els.itemName = document.getElementById('item-name');
   els.reasoningSummary = document.getElementById('reasoning-summary');
   els.decomposeTime = document.getElementById('decompose-time');
-  els.impactDesc = document.getElementById('impact-desc');
-  els.tipsDesc = document.getElementById('tips-desc');
+  els.gamificationStats = document.getElementById('gamification-stats');
+  els.gamificationDesc = document.getElementById('gamification-desc');
   els.confidenceFill = document.getElementById('confidence-fill');
   els.errorMessage = document.getElementById('error-message');
   els.statDecompose = document.getElementById('stat-decompose');
   els.statConfidence = document.getElementById('stat-confidence');
-  els.cardImpact = document.getElementById('card-impact');
-  els.cardTips = document.getElementById('card-tips');
+  els.cardGamification = document.getElementById('card-gamification');
 
   els.btnFeedbackYes = document.getElementById('btn-feedback-yes');
   els.btnFeedbackNo = document.getElementById('btn-feedback-no');
@@ -153,11 +152,9 @@ export function renderResult(data, imageSrc, lang) {
     els.reasoningSummary.style.display = data.reasoning_summary ? 'block' : 'none';
   }
   if (els.decomposeTime) els.decomposeTime.textContent = data.waktu_terurai || '';
-  if (els.impactDesc) els.impactDesc.innerHTML = formatText(data.dampak || '');
-  if (els.tipsDesc) els.tipsDesc.innerHTML = formatText(data.tips || '');
   
   // Set --card-accent on all themed elements
-  const accentEls = [els.statDecompose, els.statConfidence, els.cardImpact, els.cardTips];
+  const accentEls = [els.statDecompose, els.statConfidence, els.cardGamification];
   accentEls.forEach(el => {
     if (el) el.style.setProperty('--card-accent', color);
   });
