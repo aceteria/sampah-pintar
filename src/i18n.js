@@ -2,7 +2,7 @@
 
 export const translations = {
   id: {
-    tagline: 'Smart Waste Scanner',
+    tagline: 'Sampah Pintar',
     tap_to_start: 'MULAI SCAN',
     scan_hint: 'Arahkan ke sampah',
     scan_again: 'Scan Lagi',
@@ -28,7 +28,7 @@ export const translations = {
     ],
   },
   en: {
-    tagline: 'Smart Waste Scanner',
+    tagline: 'Sampah Pintar',
     tap_to_start: 'TAP TO START',
     scan_hint: 'Point at waste',
     scan_again: 'Scan Again',
