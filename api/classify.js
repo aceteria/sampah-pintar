@@ -127,7 +127,7 @@ export default async function handler(req) {
       const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
       if (!lookupTable[matId]) matId = 'UNKNOWN';
       classified.waktu_terurai = lookupTable[matId];
-      delete classified.material_id;
+      classified.material_id = matId; // normalize it but keep it
 
       classified.dampak = classified.dampak || 'No impact information provided.';
       classified.tips = classified.tips || 'Dispose of responsibly.';

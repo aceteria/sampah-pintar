@@ -20,6 +20,10 @@ export const translations = {
     error_generic: 'Terjadi kesalahan. Periksa koneksi internet.',
     error_timeout: 'Koneksi lambat. Coba lagi.',
     camera_denied: 'Akses kamera ditolak. Gunakan upload foto.',
+    feedback_prompt: 'Apakah tebakan AI ini benar?',
+    feedback_yes: 'Benar',
+    feedback_no: 'Salah',
+    feedback_thanks: 'Terima kasih atas masukannya!',
     fun_facts: [
       'Indonesia menghasilkan sekitar 175.000 ton sampah setiap harinya.',
       'Hanya 7% sampah di Indonesia yang berhasil didaur ulang setiap tahunnya.',
@@ -47,6 +51,10 @@ export const translations = {
     error_generic: 'An error occurred. Check your internet.',
     error_timeout: 'Connection slow. Please retry.',
     camera_denied: 'Camera denied. Use photo upload instead.',
+    feedback_prompt: 'Is this AI guess correct?',
+    feedback_yes: 'Correct',
+    feedback_no: 'Incorrect',
+    feedback_thanks: 'Thank you for your feedback!',
     fun_facts: [
       'Indonesia generates approximately 175,000 tons of waste every single day.',
       'Only 7% of Indonesia\'s waste is successfully recycled each year.',

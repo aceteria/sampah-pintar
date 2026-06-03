@@ -965,3 +965,62 @@ body {
     height: 300px;
   }
 }
+
+/* Feedback UI */
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.feedback-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-feedback {
+  flex: 1;
+  max-width: 120px;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-feedback:active {
+  transform: scale(0.95);
+}
+
+#btn-feedback-yes:hover { background: rgba(74, 124, 89, 0.5); }
+#btn-feedback-no:hover { background: rgba(199, 92, 92, 0.5); }
+
+.feedback-thanks {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--cat-organik);
+  animation: fadeIn 0.3s ease-out;
+}
+

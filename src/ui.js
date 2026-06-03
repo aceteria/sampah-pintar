@@ -39,6 +39,13 @@ export function initUI() {
   els.cardImpact = document.getElementById('card-impact');
   els.cardTips = document.getElementById('card-tips');
 
+  els.btnFeedbackYes = document.getElementById('btn-feedback-yes');
+  els.btnFeedbackNo = document.getElementById('btn-feedback-no');
+  els.feedbackActions = document.getElementById('feedback-actions');
+  els.feedbackTitle = document.getElementById('feedback-title');
+  els.feedbackThanks = document.getElementById('feedback-thanks');
+  els.feedbackSection = document.getElementById('feedback-section');
+
   return els;
 }
 
@@ -96,7 +103,20 @@ const SVG_LEAF = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M21
 const SVG_RECYCLE = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M96,208H72A56,56,0,0,1,72,96l29.71,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="60 128 92 96 124 128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline><path d="M160,208h24a56,56,0,0,0,48.49-84" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="196 128 164 160 132 128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline><path d="M128,48a56.06,56.06,0,0,1,48.49,28" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="160 96 128 48 96 96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline></svg>';
 const SVG_WARNING = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z" fill="currentColor"></path></svg>';
 
+export function resetFeedbackUI() {
+  if (els.feedbackActions) els.feedbackActions.classList.remove('hidden');
+  if (els.feedbackTitle) els.feedbackTitle.classList.remove('hidden');
+  if (els.feedbackThanks) els.feedbackThanks.classList.add('hidden');
+}
+
+export function showFeedbackThanks() {
+  if (els.feedbackActions) els.feedbackActions.classList.add('hidden');
+  if (els.feedbackTitle) els.feedbackTitle.classList.add('hidden');
+  if (els.feedbackThanks) els.feedbackThanks.classList.remove('hidden');
+}
+
 export function renderResult(data, imageSrc, lang) {
+  resetFeedbackUI();
   if (els.resultThumbnail) els.resultThumbnail.src = imageSrc;
   
   // Colors and Icons based on Kategori

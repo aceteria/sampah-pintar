@@ -3,9 +3,11 @@ import { t, setLang, toggleLang, getCurrentLang, translations } from './i18n.js'
 import { initCamera, captureFrame, stopCamera, isCameraActive } from './camera.js';
 import { classify } from './classifier.js';
 import { initUI, switchScreen, showLoading, hideLoading, showError, hideError,
-         startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls } from './ui.js';
+         startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls, showFeedbackThanks } from './ui.js';
 
 let els;
+let lastResult = null;
+let lastImage = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   els = initUI();
@@ -62,7 +64,37 @@ document.addEventListener('DOMContentLoaded', () => {
   if (els.fileUpload) {
     els.fileUpload.addEventListener('change', handleFileUpload);
   }
+
+  // Feedback Event Listeners
+  if (els.btnFeedbackYes) {
+    els.btnFeedbackYes.addEventListener('click', () => handleFeedback(true));
+  }
+  if (els.btnFeedbackNo) {
+    els.btnFeedbackNo.addEventListener('click', () => handleFeedback(false));
+  }
 });
+
+async function handleFeedback(isCorrect) {
+  showFeedbackThanks();
+  if (!lastResult || !lastImage) return;
+
+  try {
+    const payload = {
+      image: lastImage,
+      kategori: lastResult.kategori,
+      material_id: lastResult.material_id || 'UNKNOWN',
+      is_correct: isCorrect
+    };
+
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(e => console.error('Feedback error:', e));
+  } catch (e) {
+    console.error('Feedback error:', e);
+  }
+}
 
 async function startCamera() {
   try {
@@ -119,6 +151,8 @@ async function runClassification(imageData, retryCount = 0) {
     }
     
     stopCamera();
+    lastResult = result;
+    lastImage = imageData;
     renderResult(result, imageData, getCurrentLang());
     switchScreen('result');
   } catch (err) {
