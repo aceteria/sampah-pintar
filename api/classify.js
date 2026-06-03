@@ -206,8 +206,9 @@ DEFINISI KATEGORI:
 ═══════════════════════════════════════════
 • ORGANIK (#4A7C59)    — Bahan yang berasal dari makhluk hidup. Contoh: ORGANIC_FOOD, ORGANIC_YARD.
 • ANORGANIK (#5B7FA5)  — Bahan yang sulit terurai tapi aman. Contoh: PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM.
-                         PENTING: Tetra Pak adalah ANORGANIK (COMPOSITE).
+                         PENTING: Tetra Pak adalah ANORGANIK (COMPOSITE). JANGAN masukkan elektronik ke sini.
 • B3 (#C75C5C)         — Bahan Berbahaya dan Beracun. Contoh: BATTERY, E_WASTE, botol obat/bahan kimia.
+                         PENTING MUTLAK: SEMUA BARANG ELEKTRONIK (kipas angin kecil/handheld fan, kabel, charger, HP, dsb) WAJIB diklasifikasikan sebagai B3 dan material_id E_WASTE. JANGAN mengklasifikasikan elektronik sebagai ANORGANIK.
 
 ═══════════════════════════════════════════
 PENANGANAN KASUS TEPI:
@@ -272,8 +273,9 @@ CATEGORY DEFINITIONS:
 ═══════════════════════════════════════════
 • ORGANIC (#4A7C59)    — Materials from living organisms. e.g., ORGANIC_FOOD, ORGANIC_YARD.
 • INORGANIC (#5B7FA5)  — Materials that don't decompose naturally but are safe. e.g., PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM.
-                         IMPORTANT: Tetra Paks are INORGANIC (COMPOSITE).
+                         IMPORTANT: Tetra Paks are INORGANIC (COMPOSITE). DO NOT put electronics here.
 • HAZARDOUS (#C75C5C)  — Toxic waste. e.g., BATTERY, E_WASTE, chemical bottles.
+                         ABSOLUTE REQUIREMENT: ALL ELECTRONICS (handheld fans, cables, chargers, phones, etc.) MUST be classified as HAZARDOUS and material_id E_WASTE. DO NOT classify electronics as INORGANIC.
 
 ═══════════════════════════════════════════
 EDGE CASE HANDLING:
