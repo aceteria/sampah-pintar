@@ -1,0 +1,41 @@
+export const DECOMPOSITION_TIMES_ID = {
+  PLASTIC_BOTTLE: "Hingga 450 tahun (sulit terurai secara alami)",
+  PLASTIC_BAG: "10-100 tahun (terurai menjadi mikroplastik berbahaya)",
+  PAPER: "2-6 minggu (terurai cepat di lingkungan basah)",
+  CARDBOARD: "2 bulan (tergantung ketebalan dan cuaca)",
+  GLASS: "Hingga 1 juta tahun (tidak terurai, bisa didaur ulang tanpa batas)",
+  ALUMINUM: "80-200 tahun (dapat didaur ulang sepenuhnya)",
+  TIN_STEEL: "50 tahun (rentan berkarat)",
+  ORGANIC_FOOD: "1-6 bulan (sangat baik untuk kompos)",
+  ORGANIC_YARD: "Beberapa bulan (sangat baik untuk kompos)",
+  STYROFOAM: "Lebih dari 500 tahun (sulit terurai dan mencemari lingkungan)",
+  E_WASTE: "Tidak terurai secara alami (mengandung logam berat beracun)",
+  TEXTILE: "1-5 bulan (katun) hingga 200 tahun (sintetis/polyester)",
+  BATTERY: "100+ tahun (bahan kimia beracun akan mencemari tanah)",
+  RUBBER: "50-80 tahun",
+  WOOD: "10-15 tahun (kayu alami), lebih lama jika dicat/dirawat",
+  CERAMIC: "Lebih dari 1 juta tahun (sangat stabil)",
+  COMPOSITE: "Sangat bervariasi (membutuhkan fasilitas daur ulang khusus)",
+  UNKNOWN: "Sangat bervariasi tergantung jenis material penyusunnya"
+};
+
+export const DECOMPOSITION_TIMES_EN = {
+  PLASTIC_BOTTLE: "Up to 450 years (difficult to decompose naturally)",
+  PLASTIC_BAG: "10-100 years (decomposes into harmful microplastics)",
+  PAPER: "2-6 weeks (decomposes quickly in wet environments)",
+  CARDBOARD: "2 months (depends on thickness and weather)",
+  GLASS: "Up to 1 million years (does not decompose, infinitely recyclable)",
+  ALUMINUM: "80-200 years (fully recyclable)",
+  TIN_STEEL: "50 years (prone to rusting)",
+  ORGANIC_FOOD: "1-6 months (excellent for compost)",
+  ORGANIC_YARD: "A few months (excellent for compost)",
+  STYROFOAM: "Over 500 years (difficult to decompose and pollutes the environment)",
+  E_WASTE: "Does not decompose naturally (contains toxic heavy metals)",
+  TEXTILE: "1-5 months (cotton) to 200 years (synthetic/polyester)",
+  BATTERY: "100+ years (toxic chemicals will pollute the soil)",
+  RUBBER: "50-80 years",
+  WOOD: "10-15 years (natural wood), longer if painted/treated",
+  CERAMIC: "Over 1 million years (highly stable)",
+  COMPOSITE: "Highly variable (requires special recycling facilities)",
+  UNKNOWN: "Highly variable depending on the constituent materials"
+};

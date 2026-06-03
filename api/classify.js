@@ -1,3 +1,5 @@
+import { DECOMPOSITION_TIMES_ID, DECOMPOSITION_TIMES_EN } from './constants.js';
+
 export const config = {
   runtime: 'edge',
 };
@@ -71,7 +73,7 @@ export default async function handler(req, res) {
         ]
       }
     ],
-    temperature: 0.2,
+    temperature: 0.1,
     top_p: 0.95,
     max_tokens: 4096,
     reasoning_budget: 1024,
@@ -125,20 +127,31 @@ export default async function handler(req, res) {
       classified.warna = classified.warna || (classified.kategori === 'ORGANIK' || classified.kategori === 'ORGANIC' ? '#4A7C59' : classified.kategori === 'B3' || classified.kategori === 'HAZARDOUS' ? '#C75C5C' : '#5B7FA5');
       classified.nama_benda = classified.nama_benda || 'Unknown Object';
       classified.confidence = classified.confidence || 'RENDAH';
-      classified.waktu_terurai = classified.waktu_terurai || 'Unknown time';
+      
+      let matId = (classified.material_id || 'UNKNOWN').toUpperCase().trim();
+      const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
+      if (!lookupTable[matId]) matId = 'UNKNOWN';
+      classified.waktu_terurai = lookupTable[matId];
+      delete classified.material_id;
+
       classified.dampak = classified.dampak || 'No impact information provided.';
       classified.tips = classified.tips || 'Dispose of responsibly.';
       classified.reasoning_summary = classified.reasoning_summary || 'Analyzed via image recognition.';
+    } else {
+      // Empty or error case mapping
+      const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
+      classified.waktu_terurai = "";
     }
   } catch {
     console.error('[classify] Failed to parse JSON output:', rawText);
+    const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
     // Return a partial failure rather than a 500 crash so UI handles it gracefully
     const errorResponse = {
       kategori: 'TIDAK_JELAS',
       warna: '#888888',
       nama_benda: 'Parse Error',
       confidence: 'RENDAH',
-      waktu_terurai: '',
+      waktu_terurai: lookupTable.UNKNOWN,
       dampak: 'The AI provided an invalid format.',
       tips: 'Please try again.',
       reasoning_summary: 'We had trouble parsing the response. Please try moving closer or adjusting the lighting.'
@@ -165,72 +178,56 @@ SKEMA JSON (wajib diikuti persis):
 ═══════════════════════════════════════════
 {
   "kategori"         : string,   // Satu dari: "ORGANIK" | "ANORGANIK" | "B3" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
-  "warna"            : string,   // Kode hex warna kategori: ORGANIK="#4A7C59", ANORGANIK="#5B7FA5", B3="#C75C5C"
+  "warna"            : string,   // Kode hex warna: ORGANIK="#4A7C59", ANORGANIK="#5B7FA5", B3="#C75C5C"
   "nama_benda"       : string,   // Nama benda yang teridentifikasi, dalam Bahasa Indonesia (contoh: "Botol Plastik PET", "Kulit Pisang")
+  "material_id"      : string,   // WAJIB salah satu string persis dari DAFTAR MATERIAL_ID di bawah
   "confidence"       : string,   // Tingkat keyakinan: "TINGGI" | "SEDANG" | "RENDAH"
-  "waktu_terurai"    : string,   // Perkiraan waktu terurai yang mudah dibaca (contoh: "2-6 minggu", "450 tahun", "Tidak dapat terurai secara alami")
   "dampak"           : string,   // 1 kalimat singkat: dampak lingkungan jika dibuang ke tempat sampah umum
   "tips"             : string,   // 1 kalimat singkat: cara pembuangan yang benar dan dapat langsung dilakukan
-  "reasoning_summary": string    // 1 kalimat singkat menjelaskan alasan benda ini dikategorikan demikian untuk meyakinkan pengguna (contoh: "Terdeteksi plastik PET #1 yang tidak mudah terurai, sehingga masuk anorganik.")
+  "reasoning_summary": string    // 1 kalimat singkat menjelaskan alasan benda ini dikategorikan demikian untuk meyakinkan pengguna
 }
+
+═══════════════════════════════════════════
+DAFTAR MATERIAL_ID (Pilih SALAH SATU yang paling tepat):
+═══════════════════════════════════════════
+- PLASTIC_BOTTLE (Botol plastik PET)
+- PLASTIC_BAG (Kantong kresek, kemasan plastik lentur)
+- PAPER (Kertas, tisu, koran)
+- CARDBOARD (Kardus, karton)
+- GLASS (Kaca, botol beling)
+- ALUMINUM (Kaleng minuman aluminium)
+- TIN_STEEL (Kaleng besi/baja, sarden)
+- ORGANIC_FOOD (Sisa makanan, kulit buah, tulang)
+- ORGANIC_YARD (Daun, ranting, kayu alami)
+- STYROFOAM (Gabus styrofoam)
+- E_WASTE (Elektronik bekas, kabel, PCB)
+- TEXTILE (Kain, baju bekas, karpet)
+- BATTERY (Baterai bekas)
+- RUBBER (Karet, ban bekas)
+- WOOD (Kayu olahan, furnitur)
+- CERAMIC (Keramik, porselen)
+- COMPOSITE (Material campuran yang sulit dipisah, misal Tetra Pak atau mainan plastik-besi)
+- UNKNOWN (Benda tidak dikenali)
 
 ═══════════════════════════════════════════
 DEFINISI KATEGORI:
 ═══════════════════════════════════════════
-• ORGANIK (#4A7C59)    — Bahan yang berasal dari makhluk hidup dan dapat terurai secara alami oleh
-                         mikroorganisme. Contoh: sisa makanan, kulit buah, daun kering, kertas kotor,
-                         tulang, ampas kopi/teh.
-
-• ANORGANIK (#5B7FA5)  — Bahan yang tidak dapat terurai secara alami atau memerlukan waktu sangat
-                         lama. Dapat didaur ulang. Contoh: botol plastik, kaleng aluminium, kaca,
-                         kardus bersih, kertas bersih, logam, karet, styrofoam.
-                         PENTING: Kemasan minuman kotak (Tetra Pak) adalah ANORGANIK, bukan Organik.
-
-• B3 (#C75C5C)         — Bahan Berbahaya dan Beracun. Mengandung zat kimia berbahaya yang berisiko
-                         mencemari tanah, air, dan udara. Contoh: baterai, lampu neon/CFL,
-                         elektronik/e-waste, cat, pestisida, obat-obatan kadaluarsa, pembersih kimia,
-                         tinta printer, oli bekas.
-
-═══════════════════════════════════════════
-PANDUAN CONFIDENCE:
-═══════════════════════════════════════════
-• TINGGI — Objek terlihat jelas, terfokus, dan mudah diidentifikasi dengan pasti.
-• SEDANG — Objek dapat diidentifikasi namun ada sedikit ambiguitas (blur ringan, sebagian tertutup,
-           sudut pandang tidak ideal).
-• RENDAH — Objek sulit diidentifikasi (sangat blur, gelap, tertutup sebagian besar, atau komposit
-           dari beberapa jenis benda).
-
-═══════════════════════════════════════════
-PANDUAN WAKTU_TERURAI:
-═══════════════════════════════════════════
-Gunakan perkiraan ilmiah yang umum diketahui. Contoh referensi:
-- Kulit buah/sayuran: "2-4 minggu"
-- Kertas: "2-5 bulan"
-- Kardus: "2 bulan"
-- Karet/ban: "50-80 tahun"
-- Kaleng aluminium: "80-200 tahun"
-- Botol plastik: "450 tahun"
-- Kantong plastik: "10-20 tahun"
-- Styrofoam: "Lebih dari 500 tahun"
-- Kaca: "Lebih dari 1 juta tahun"
-- Baterai: "Tidak dapat terurai, mengandung logam berat"
-- E-waste: "Tidak dapat terurai, mengandung bahan beracun"
+• ORGANIK (#4A7C59)    — Bahan yang berasal dari makhluk hidup. Contoh: ORGANIC_FOOD, ORGANIC_YARD.
+• ANORGANIK (#5B7FA5)  — Bahan yang sulit terurai tapi aman. Contoh: PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM.
+                         PENTING: Tetra Pak adalah ANORGANIK (COMPOSITE).
+• B3 (#C75C5C)         — Bahan Berbahaya dan Beracun. Contoh: BATTERY, E_WASTE, botol obat/bahan kimia.
 
 ═══════════════════════════════════════════
 PENANGANAN KASUS TEPI:
 ═══════════════════════════════════════════
-• Jika gambar TIDAK MENGANDUNG BENDA APAPUN (gambar kosong, hanya tekstur/latar belakang, layar hitam):
-  Kembalikan: { "kategori": "TIDAK_TERDETEKSI", "warna": "#888888", "nama_benda": "", "confidence": "RENDAH", "waktu_terurai": "", "dampak": "", "tips": "" }
+• Jika gambar TIDAK MENGANDUNG BENDA APAPUN (kosong, layar hitam):
+  Kembalikan: { "kategori": "TIDAK_TERDETEKSI", "warna": "#888888", "nama_benda": "", "material_id": "UNKNOWN", "confidence": "RENDAH", "dampak": "", "tips": "", "reasoning_summary": "" }
 
-• Jika gambar mengandung benda tetapi TIDAK DAPAT DIKLASIFIKASI dengan cukup keyakinan (gambar terlalu
-  blur, terlalu gelap, benda tidak dikenal, atau campuran berbagai jenis sampah yang tidak dominan):
-  Kembalikan: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Tidak dapat diidentifikasi", "confidence": "RENDAH", "waktu_terurai": "", "dampak": "Tidak dapat ditentukan karena gambar tidak cukup jelas.", "tips": "Coba ambil foto lebih dekat dengan pencahayaan yang baik." }
+• Jika gambar terlalu blur atau tidak dapat diidentifikasi:
+  Kembalikan: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Tidak dapat diidentifikasi", "material_id": "UNKNOWN", "confidence": "RENDAH", "dampak": "Tidak dapat ditentukan karena gambar tidak cukup jelas.", "tips": "Coba ambil foto lebih dekat dengan pencahayaan yang baik.", "reasoning_summary": "" }
 
-• Jika ada BEBERAPA BENDA dalam satu gambar, klasifikasi berdasarkan benda yang PALING DOMINAN
-  (terbesar, paling dekat, paling menonjol). Fokus hanya pada SATU benda tersebut.
-
-• Jika benda merupakan CAMPURAN yang tidak dapat dipisahkan (misal: makanan dalam wadah plastik),
-  gunakan kategori yang PALING BERBAHAYA (B3 > ANORGANIK > ORGANIK).
+• Jika ada BEBERAPA BENDA, klasifikasi berdasarkan benda yang PALING DOMINAN.
+• Jika benda CAMPURAN (makanan dalam plastik), gunakan kategori yang PALING BERBAHAYA (B3 > ANORGANIK > ORGANIK) dan material_id COMPOSITE.
 
 Pastikan kamu mengeluarkan blok \`\`\`json ... \`\`\` di akhir responsmu.
 `.trim();
@@ -248,71 +245,55 @@ JSON SCHEMA (must be followed exactly):
 {
   "kategori"         : string,   // One of: "ORGANIC" | "INORGANIC" | "HAZARDOUS" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
   "warna"            : string,   // Category color hex: ORGANIC="#4A7C59", INORGANIC="#5B7FA5", HAZARDOUS="#C75C5C"
-  "nama_benda"       : string,   // Name of the identified object in English (e.g. "PET Plastic Bottle", "Banana Peel")
+  "nama_benda"       : string,   // Name of the identified object in English (e.g. "PET Plastic Bottle")
+  "material_id"      : string,   // MUST be EXACTLY one of the strings from the MATERIAL_ID LIST below
   "confidence"       : string,   // Confidence level: "HIGH" | "MEDIUM" | "LOW"
-  "waktu_terurai"    : string,   // Human-readable decomposition time estimate (e.g. "2-6 weeks", "450 years", "Does not decompose naturally")
   "dampak"           : string,   // 1 concise sentence: environmental impact if discarded in general waste
   "tips"             : string,   // 1 concise actionable tip: correct disposal method
-  "reasoning_summary": string    // 1 concise sentence explaining why this item was categorized as such to build user trust (e.g. "Detected #1 PET plastic which doesn't decompose, so it's inorganic.")
+  "reasoning_summary": string    // 1 concise sentence explaining why this item was categorized as such
 }
+
+═══════════════════════════════════════════
+MATERIAL_ID LIST (Choose EXACTLY ONE that fits best):
+═══════════════════════════════════════════
+- PLASTIC_BOTTLE (PET plastic bottles)
+- PLASTIC_BAG (Plastic bags, flexible packaging)
+- PAPER (Paper, tissue, newspaper)
+- CARDBOARD (Cardboard boxes)
+- GLASS (Glass bottles, jars)
+- ALUMINUM (Aluminum cans)
+- TIN_STEEL (Steel/tin cans)
+- ORGANIC_FOOD (Food scraps, peels, bones)
+- ORGANIC_YARD (Leaves, twigs, natural wood)
+- STYROFOAM (Styrofoam cups/packaging)
+- E_WASTE (Old electronics, cables, PCBs)
+- TEXTILE (Clothing, fabrics, carpets)
+- BATTERY (Used batteries)
+- RUBBER (Rubber, tires)
+- WOOD (Treated/processed wood, furniture)
+- CERAMIC (Ceramics, porcelain)
+- COMPOSITE (Inseparable mixed materials, e.g., Tetra Pak, toys with plastic and metal)
+- UNKNOWN (Object unrecognizable)
 
 ═══════════════════════════════════════════
 CATEGORY DEFINITIONS:
 ═══════════════════════════════════════════
-• ORGANIC (#4A7C59)    — Materials originating from living organisms that decompose naturally via
-                         microorganisms. Examples: food scraps, fruit peels, dry leaves, dirty paper,
-                         bones, coffee/tea grounds.
-
-• INORGANIC (#5B7FA5)  — Materials that do not decompose naturally or take an extremely long time.
-                         Can be recycled. Examples: plastic bottles, aluminum cans, glass, clean
-                         cardboard, clean paper, metal, rubber, styrofoam.
-                         IMPORTANT: Beverage cartons (Tetra Pak) are INORGANIC, not Organic.
-
-• HAZARDOUS (#C75C5C)  — Hazardous and Toxic Waste. Contains chemical substances that risk
-                         contaminating soil, water, and air. Examples: batteries, fluorescent/CFL
-                         bulbs, electronics/e-waste, paint, pesticides, expired medications,
-                         chemical cleaners, printer ink, used motor oil.
-
-═══════════════════════════════════════════
-CONFIDENCE GUIDELINES:
-═══════════════════════════════════════════
-• HIGH   — Object is clearly visible, in focus, and can be identified with certainty.
-• MEDIUM — Object is identifiable but with slight ambiguity (mild blur, partially obscured,
-           non-ideal angle).
-• LOW    — Object is difficult to identify (very blurry, dark, mostly obscured, or a composite
-           of several item types).
-
-═══════════════════════════════════════════
-DECOMPOSITION TIME GUIDELINES:
-═══════════════════════════════════════════
-Use well-known scientific estimates. Reference examples:
-- Fruit/vegetable peels: "2-4 weeks"
-- Paper: "2-5 months"
-- Cardboard: "2 months"
-- Rubber/tires: "50-80 years"
-- Aluminum can: "80-200 years"
-- Plastic bottle: "450 years"
-- Plastic bag: "10-20 years"
-- Styrofoam: "500+ years"
-- Glass: "1 million+ years"
-- Battery: "Does not decompose, contains heavy metals"
-- E-waste: "Does not decompose, contains toxic materials"
+• ORGANIC (#4A7C59)    — Materials from living organisms. e.g., ORGANIC_FOOD, ORGANIC_YARD.
+• INORGANIC (#5B7FA5)  — Materials that don't decompose naturally but are safe. e.g., PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM.
+                         IMPORTANT: Tetra Paks are INORGANIC (COMPOSITE).
+• HAZARDOUS (#C75C5C)  — Toxic waste. e.g., BATTERY, E_WASTE, chemical bottles.
 
 ═══════════════════════════════════════════
 EDGE CASE HANDLING:
 ═══════════════════════════════════════════
-• If the image CONTAINS NO OBJECT (blank image, only background/texture, black screen):
-  Return: { "kategori": "TIDAK_TERDETEKSI", "warna": "#888888", "nama_benda": "", "confidence": "LOW", "waktu_terurai": "", "dampak": "", "tips": "" }
+• If the image CONTAINS NO OBJECT (blank image, black screen):
+  Return: { "kategori": "TIDAK_TERDETEKSI", "warna": "#888888", "nama_benda": "", "material_id": "UNKNOWN", "confidence": "LOW", "dampak": "", "tips": "", "reasoning_summary": "" }
 
-• If the image contains an object but CANNOT BE CLASSIFIED with sufficient confidence (too blurry,
-  too dark, unknown item, or a mix of waste types with no dominant item):
-  Return: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Cannot be identified", "confidence": "LOW", "waktu_terurai": "", "dampak": "Cannot be determined as the image is not clear enough.", "tips": "Try taking a closer photo with better lighting." }
+• If the image cannot be classified (too blurry, too dark, unrecognizable):
+  Return: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Cannot be identified", "material_id": "UNKNOWN", "confidence": "LOW", "dampak": "Cannot be determined as the image is not clear enough.", "tips": "Try taking a closer photo with better lighting.", "reasoning_summary": "" }
 
-• If there are MULTIPLE OBJECTS in the image, classify based on the MOST DOMINANT item
-  (largest, closest, most prominent). Focus strictly on that ONE item.
-
-• If the item is an INSEPARABLE MIX (e.g., food inside a plastic container), use the
-  MOST HAZARDOUS category (HAZARDOUS > INORGANIC > ORGANIC).
+• If there are MULTIPLE OBJECTS, classify based on the MOST DOMINANT item.
+• If the item is an INSEPARABLE MIX (e.g., food inside a plastic container), use the MOST HAZARDOUS category (HAZARDOUS > INORGANIC > ORGANIC) and use material_id COMPOSITE.
 
 Make sure to output the \`\`\`json ... \`\`\` block at the end of your response.
 `.trim();
