@@ -28,6 +28,7 @@ export function initUI() {
   els.categoryIcon = document.getElementById('category-icon');
   els.categoryName = document.getElementById('category-name');
   els.itemName = document.getElementById('item-name');
+  els.reasoningSummary = document.getElementById('reasoning-summary');
   els.decomposeTime = document.getElementById('decompose-time');
   els.impactDesc = document.getElementById('impact-desc');
   els.tipsDesc = document.getElementById('tips-desc');
@@ -127,6 +128,10 @@ export function renderResult(data, imageSrc, lang) {
   }
   
   if (els.itemName) els.itemName.textContent = data.nama_benda || '';
+  if (els.reasoningSummary) {
+    els.reasoningSummary.textContent = data.reasoning_summary || '';
+    els.reasoningSummary.style.display = data.reasoning_summary ? 'block' : 'none';
+  }
   if (els.decomposeTime) els.decomposeTime.textContent = data.waktu_terurai || '';
   if (els.impactDesc) els.impactDesc.innerHTML = formatText(data.dampak || '');
   if (els.tipsDesc) els.tipsDesc.innerHTML = formatText(data.tips || '');

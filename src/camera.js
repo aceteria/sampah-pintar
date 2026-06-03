@@ -58,11 +58,25 @@ export function captureFrame() {
     return null;
   }
 
-  canvasEl.width = videoEl.videoWidth;
-  canvasEl.height = videoEl.videoHeight;
+  const MAX_DIM = 1024;
+  let w = videoEl.videoWidth;
+  let h = videoEl.videoHeight;
+  
+  if (w > MAX_DIM || h > MAX_DIM) {
+    if (w > h) {
+      h = Math.round((h * MAX_DIM) / w);
+      w = MAX_DIM;
+    } else {
+      w = Math.round((w * MAX_DIM) / h);
+      h = MAX_DIM;
+    }
+  }
+
+  canvasEl.width = w;
+  canvasEl.height = h;
 
   const ctx = canvasEl.getContext('2d');
-  ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+  ctx.drawImage(videoEl, 0, 0, w, h);
 
   return canvasEl.toDataURL('image/jpeg', 0.82);
 }

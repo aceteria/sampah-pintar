@@ -1,3 +1,7 @@
+export const config = {
+  runtime: 'edge',
+};
+
 export default async function handler(req, res) {
   // ── CORS headers ──────────────────────────────────────────────────────────
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -6,26 +10,32 @@ export default async function handler(req, res) {
 
   // ── Preflight ─────────────────────────────────────────────────────────────
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return new Response(null, { status: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
   }
 
   // ── Method guard ──────────────────────────────────────────────────────────
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
   }
 
   // ── API key guard ─────────────────────────────────────────────────────────
   const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
   if (!NVIDIA_API_KEY) {
     console.error('[classify] NVIDIA_API_KEY is not set');
-    return res.status(500).json({ error: 'Server configuration error' });
+    return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
   // ── Parse & validate body ─────────────────────────────────────────────────
-  const { image, lang = 'ID' } = req.body ?? {};
+  let body;
+  try {
+    body = await req.json();
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+  }
+  const { image, lang = 'ID' } = body ?? {};
 
   if (!image) {
-    return res.status(400).json({ error: 'Missing required field: image' });
+    return new Response(JSON.stringify({ error: 'Missing required field: image' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
   // ── Strip data URL prefix (e.g. "data:image/jpeg;base64,") ───────────────
@@ -80,7 +90,7 @@ export default async function handler(req, res) {
     });
   } catch (networkErr) {
     console.error('[classify] Network error calling NVIDIA NIM:', networkErr);
-    return res.status(500).json({ error: 'Internal server error' });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
   if (!nimResponse.ok) {
@@ -88,9 +98,7 @@ export default async function handler(req, res) {
     console.error(
       `[classify] NVIDIA NIM returned ${nimResponse.status}: ${errorText}`
     );
-    return res
-      .status(nimResponse.status)
-      .json({ error: 'AI service error' });
+    return new Response(JSON.stringify({ error: 'AI service error' }), { status: nimResponse.status, headers: { 'Content-Type': 'application/json' } });
   }
 
   // ── Parse NVIDIA NIM response ─────────────────────────────────────────────
@@ -99,16 +107,17 @@ export default async function handler(req, res) {
     nimJson = await nimResponse.json();
   } catch {
     console.error('[classify] Failed to parse NVIDIA NIM HTTP response as JSON');
-    return res.status(500).json({ error: 'Invalid AI response' });
+    return new Response(JSON.stringify({ error: 'Invalid AI response' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
   const rawText = nimJson.choices?.[0]?.message?.content ?? '';
 
   let classified;
   try {
-    // Strip markdown JSON blocks if present
-    const cleanedText = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    classified = JSON.parse(cleanedText);
+    // Extract JSON from markdown block to avoid reasoning text parsing issues
+    const match = rawText.match(/```json([\s\S]*?)```/i);
+    const jsonString = match ? match[1].trim() : rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    classified = JSON.parse(jsonString);
     
     // Schema validation and fallbacks
     const isErrorOrEmpty = ['TIDAK_TERDETEKSI', 'TIDAK_JELAS', 'NOT_DETECTED', 'UNCLEAR'].includes(classified.kategori);
@@ -119,23 +128,26 @@ export default async function handler(req, res) {
       classified.waktu_terurai = classified.waktu_terurai || 'Unknown time';
       classified.dampak = classified.dampak || 'No impact information provided.';
       classified.tips = classified.tips || 'Dispose of responsibly.';
+      classified.reasoning_summary = classified.reasoning_summary || 'Analyzed via image recognition.';
     }
   } catch {
     console.error('[classify] Failed to parse JSON output:', rawText);
     // Return a partial failure rather than a 500 crash so UI handles it gracefully
-    return res.status(200).json({
+    const errorResponse = {
       kategori: 'TIDAK_JELAS',
       warna: '#888888',
       nama_benda: 'Parse Error',
       confidence: 'RENDAH',
       waktu_terurai: '',
       dampak: 'The AI provided an invalid format.',
-      tips: 'Please try again.'
-    });
+      tips: 'Please try again.',
+      reasoning_summary: 'We had trouble parsing the response. Please try moving closer or adjusting the lighting.'
+    };
+    return new Response(JSON.stringify(errorResponse), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 
   // ── Return result ─────────────────────────────────────────────────────────
-  return res.status(200).json(classified);
+  return new Response(JSON.stringify(classified), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,19 +157,21 @@ export default async function handler(req, res) {
 function buildPromptID() {
   return `
 Kamu adalah sistem klasifikasi sampah berbasis AI yang sangat akurat.
-Analisis gambar yang diberikan dan kembalikan HANYA objek JSON yang valid sesuai skema di bawah ini — tanpa teks tambahan, tanpa markdown, tanpa penjelasan.
+Langkah 1: Analisis gambar yang diberikan dan tuliskan sedikit penalaran tentang bahan dan objek yang kamu lihat.
+Langkah 2: Kembalikan objek JSON yang valid di dalam blok \`\`\`json ... \`\`\` sesuai skema di bawah ini. JANGAN berikan JSON tanpa blok \`\`\`json\`\`\`.
 
 ═══════════════════════════════════════════
 SKEMA JSON (wajib diikuti persis):
 ═══════════════════════════════════════════
 {
-  "kategori"     : string,   // Satu dari: "ORGANIK" | "ANORGANIK" | "B3" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
-  "warna"        : string,   // Kode hex warna kategori: ORGANIK="#4A7C59", ANORGANIK="#5B7FA5", B3="#C75C5C"
-  "nama_benda"   : string,   // Nama benda yang teridentifikasi, dalam Bahasa Indonesia (contoh: "Botol Plastik PET", "Kulit Pisang")
-  "confidence"   : string,   // Tingkat keyakinan: "TINGGI" | "SEDANG" | "RENDAH"
-  "waktu_terurai": string,   // Perkiraan waktu terurai yang mudah dibaca (contoh: "2-6 minggu", "450 tahun", "Tidak dapat terurai secara alami")
-  "dampak"       : string,   // 1 kalimat singkat: dampak lingkungan jika dibuang ke tempat sampah umum
-  "tips"         : string    // 1 kalimat singkat: cara pembuangan yang benar dan dapat langsung dilakukan
+  "kategori"         : string,   // Satu dari: "ORGANIK" | "ANORGANIK" | "B3" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
+  "warna"            : string,   // Kode hex warna kategori: ORGANIK="#4A7C59", ANORGANIK="#5B7FA5", B3="#C75C5C"
+  "nama_benda"       : string,   // Nama benda yang teridentifikasi, dalam Bahasa Indonesia (contoh: "Botol Plastik PET", "Kulit Pisang")
+  "confidence"       : string,   // Tingkat keyakinan: "TINGGI" | "SEDANG" | "RENDAH"
+  "waktu_terurai"    : string,   // Perkiraan waktu terurai yang mudah dibaca (contoh: "2-6 minggu", "450 tahun", "Tidak dapat terurai secara alami")
+  "dampak"           : string,   // 1 kalimat singkat: dampak lingkungan jika dibuang ke tempat sampah umum
+  "tips"             : string,   // 1 kalimat singkat: cara pembuangan yang benar dan dapat langsung dilakukan
+  "reasoning_summary": string    // 1 kalimat singkat menjelaskan alasan benda ini dikategorikan demikian untuk meyakinkan pengguna (contoh: "Terdeteksi plastik PET #1 yang tidak mudah terurai, sehingga masuk anorganik.")
 }
 
 ═══════════════════════════════════════════
@@ -213,31 +227,33 @@ PENANGANAN KASUS TEPI:
   Kembalikan: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Tidak dapat diidentifikasi", "confidence": "RENDAH", "waktu_terurai": "", "dampak": "Tidak dapat ditentukan karena gambar tidak cukup jelas.", "tips": "Coba ambil foto lebih dekat dengan pencahayaan yang baik." }
 
 • Jika ada BEBERAPA BENDA dalam satu gambar, klasifikasi berdasarkan benda yang PALING DOMINAN
-  (terbesar, paling dekat, paling menonjol).
+  (terbesar, paling dekat, paling menonjol). Fokus hanya pada SATU benda tersebut.
 
 • Jika benda merupakan CAMPURAN yang tidak dapat dipisahkan (misal: makanan dalam wadah plastik),
   gunakan kategori yang PALING BERBAHAYA (B3 > ANORGANIK > ORGANIK).
 
-Kembalikan HANYA JSON. Mulai langsung dengan karakter '{'.
+Pastikan kamu mengeluarkan blok \`\`\`json ... \`\`\` di akhir responsmu.
 `.trim();
 }
 
 function buildPromptEN() {
   return `
 You are a highly accurate AI-powered waste classification system.
-Analyze the provided image and return ONLY a valid JSON object following the schema below — no extra text, no markdown, no explanation.
+Step 1: Analyze the provided image and write a brief reasoning about the materials and objects you see.
+Step 2: Return a valid JSON object inside a \`\`\`json ... \`\`\` block following the schema below. DO NOT return the JSON without the \`\`\`json\`\`\` block.
 
 ═══════════════════════════════════════════
 JSON SCHEMA (must be followed exactly):
 ═══════════════════════════════════════════
 {
-  "kategori"     : string,   // One of: "ORGANIC" | "INORGANIC" | "HAZARDOUS" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
-  "warna"        : string,   // Category color hex: ORGANIC="#4A7C59", INORGANIC="#5B7FA5", HAZARDOUS="#C75C5C"
-  "nama_benda"   : string,   // Name of the identified object in English (e.g. "PET Plastic Bottle", "Banana Peel")
-  "confidence"   : string,   // Confidence level: "HIGH" | "MEDIUM" | "LOW"
-  "waktu_terurai": string,   // Human-readable decomposition time estimate (e.g. "2-6 weeks", "450 years", "Does not decompose naturally")
-  "dampak"       : string,   // 1 concise sentence: environmental impact if discarded in general waste
-  "tips"         : string    // 1 concise actionable tip: correct disposal method
+  "kategori"         : string,   // One of: "ORGANIC" | "INORGANIC" | "HAZARDOUS" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
+  "warna"            : string,   // Category color hex: ORGANIC="#4A7C59", INORGANIC="#5B7FA5", HAZARDOUS="#C75C5C"
+  "nama_benda"       : string,   // Name of the identified object in English (e.g. "PET Plastic Bottle", "Banana Peel")
+  "confidence"       : string,   // Confidence level: "HIGH" | "MEDIUM" | "LOW"
+  "waktu_terurai"    : string,   // Human-readable decomposition time estimate (e.g. "2-6 weeks", "450 years", "Does not decompose naturally")
+  "dampak"           : string,   // 1 concise sentence: environmental impact if discarded in general waste
+  "tips"             : string,   // 1 concise actionable tip: correct disposal method
+  "reasoning_summary": string    // 1 concise sentence explaining why this item was categorized as such to build user trust (e.g. "Detected #1 PET plastic which doesn't decompose, so it's inorganic.")
 }
 
 ═══════════════════════════════════════════
@@ -293,11 +309,11 @@ EDGE CASE HANDLING:
   Return: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Cannot be identified", "confidence": "LOW", "waktu_terurai": "", "dampak": "Cannot be determined as the image is not clear enough.", "tips": "Try taking a closer photo with better lighting." }
 
 • If there are MULTIPLE OBJECTS in the image, classify based on the MOST DOMINANT item
-  (largest, closest, most prominent).
+  (largest, closest, most prominent). Focus strictly on that ONE item.
 
 • If the item is an INSEPARABLE MIX (e.g., food inside a plastic container), use the
   MOST HAZARDOUS category (HAZARDOUS > INORGANIC > ORGANIC).
 
-Return ONLY the JSON. Start directly with the '{' character.
+Make sure to output the \`\`\`json ... \`\`\` block at the end of your response.
 `.trim();
 }

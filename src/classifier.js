@@ -1,6 +1,6 @@
 // src/classifier.js — EcoScan v2 Hybrid Classifier (Proxy + Direct Fallback)
 
-const PROXY_TIMEOUT = 15000;
+const PROXY_TIMEOUT = 30000;
 
 // ---------------------------------------------------------------------------
 // Fetch with timeout
