@@ -21,6 +21,7 @@
   <div id="splash" class="screen active">
     <div class="splash-container">
       <div class="splash-text-section">
+        <div class="splash-date glass-pill" id="splash-date"></div>
         <h1 class="title">SAPI</h1>
         <p class="tagline" data-i18n="tagline"></p>
         <button id="btn-start" class="btn-primary" data-i18n="tap_to_start"></button>
@@ -97,60 +98,50 @@
     </header>
 
     <div class="result-container">
-      <!-- Identity bar: thumbnail + meta -->
-      <div class="result-header stagger-item">
+      <!-- Hero: Thumbnail with confidence overlay -->
+      <div class="result-hero stagger-item">
         <div class="result-img-wrapper">
           <img id="result-thumbnail" class="result-img" alt="Scanned waste" />
-        </div>
-        <div class="result-meta">
-          <div class="result-badge" id="category-badge">
-            <span id="category-icon"></span>
-            <span id="category-name"></span>
-          </div>
-          <h2 id="item-name"></h2>
-          <p id="reasoning-summary" style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.9; line-height: 1.3; font-weight: 400;"></p>
-        </div>
-      </div>
-
-      <!-- Feedback UI -->
-      <div class="feedback-card glass-panel stagger-item" id="feedback-section">
-        <p class="feedback-title" id="feedback-title" data-i18n="feedback_prompt"></p>
-        <div class="feedback-actions" id="feedback-actions">
-          <button id="btn-feedback-yes" class="btn-feedback">👍 <span data-i18n="feedback_yes"></span></button>
-          <button id="btn-feedback-no" class="btn-feedback">👎 <span data-i18n="feedback_no"></span></button>
-        </div>
-        <p id="feedback-thanks" class="feedback-thanks hidden" data-i18n="feedback_thanks"></p>
-      </div>
-
-      <!-- Quick stats row -->
-      <div class="quick-stats stagger-item">
-        <div class="stat-pill glass-panel" id="stat-decompose">
-          <svg class="stat-icon" width="20" height="20" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z" fill="currentColor"></path></svg>
-          <div class="stat-content">
-            <span class="stat-label" data-i18n="time_to_decompose"></span>
-            <span class="stat-value" id="decompose-time"></span>
-          </div>
-        </div>
-        <div class="stat-pill glass-panel" id="stat-confidence">
-          <svg class="stat-icon" width="20" height="20" viewBox="0 0 256 256"><path d="M176,232a8,8,0,0,1-8,8H88a8,8,0,0,1,0-16h80A8,8,0,0,1,176,232Zm40-128a87.55,87.55,0,0,1-33.64,69.21A16.24,16.24,0,0,0,176,186v6a16,16,0,0,1-16,16H96a16,16,0,0,1-16-16v-6a16,16,0,0,0-6.23-12.66A87.59,87.59,0,0,1,40,104.49C39.74,56.83,78.26,17.14,125.88,16A88,88,0,0,1,216,104Z" fill="currentColor"></path></svg>
-          <div class="stat-content">
-            <span class="stat-label" data-i18n="confidence"></span>
-            <div class="confidence-bar">
-              <div class="confidence-fill" id="confidence-fill"></div>
-            </div>
+          <div class="confidence-overlay" id="confidence-overlay">
+            <svg class="confidence-ring" viewBox="0 0 120 120">
+              <circle class="confidence-ring-bg" cx="60" cy="60" r="52" />
+              <circle class="confidence-ring-fill" id="confidence-ring-fill" cx="60" cy="60" r="52" />
+            </svg>
+            <span class="confidence-value" id="confidence-value">85%</span>
           </div>
         </div>
       </div>
 
-      <!-- Gamification card -->
-      <div class="glass-panel info-card stagger-item" id="card-gamification">
-        <div class="info-card-header">
-          <svg class="info-card-icon" width="22" height="22" viewBox="0 0 256 256"><path d="M224,48H32a8,8,0,0,0-8,8v43.2a32.06,32.06,0,0,0,16,27.71V208a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V126.91a32.06,32.06,0,0,0,16-27.71V56A8,8,0,0,0,224,48Zm-16,51.2a16,16,0,0,1-16,16H64a16,16,0,0,1-16-16V64H208ZM200,200H56V137.45A31.86,31.86,0,0,0,64,138.67a31.7,31.7,0,0,0,32-32V96h16v10.67a31.7,31.7,0,0,0,32,32,31.7,31.7,0,0,0,32-32V96h16v10.67a31.7,31.7,0,0,0,32,32,31.86,31.86,0,0,0,8-1.22Z" fill="currentColor"></path></svg>
-          <span class="info-card-label" data-i18n="gamification_title">Pahlawan Lingkungan</span>
+      <!-- Classification info -->
+      <div class="result-info stagger-item">
+        <div class="result-badge" id="category-badge">
+          <span id="category-icon"></span>
+          <span id="category-name"></span>
         </div>
-        <div class="info-card-body">
-          <p id="gamification-stats" style="font-weight: 600; margin-bottom: 0.5rem; font-size: 1.1rem; color: var(--card-accent);"></p>
-          <p id="gamification-desc"></p>
+        <h2 id="item-name"></h2>
+        <p id="result-description" class="result-description"></p>
+      </div>
+
+      <!-- Detail pills -->
+      <div class="result-details stagger-item">
+        <div class="detail-pill glass-panel" id="stat-decompose">
+          <div class="detail-pill-icon">
+            <svg width="22" height="22" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z" fill="currentColor"></path></svg>
+          </div>
+          <div class="detail-pill-content">
+            <span class="detail-pill-label" data-i18n="time_to_decompose"></span>
+            <span class="detail-pill-value" id="decompose-time"></span>
+          </div>
+        </div>
+
+        <div class="detail-pill glass-panel" id="stat-scans">
+          <div class="detail-pill-icon">
+            <svg width="22" height="22" viewBox="0 0 256 256"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM232,128A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z" fill="currentColor"></path></svg>
+          </div>
+          <div class="detail-pill-content">
+            <span class="detail-pill-label" data-i18n="scans_today"></span>
+            <span class="detail-pill-value" id="result-scans"></span>
+          </div>
         </div>
       </div>
 

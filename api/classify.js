@@ -70,9 +70,7 @@ export default async function handler(req) {
     ],
     temperature: 0.1,
     top_p: 0.95,
-    max_tokens: 4096,
-    reasoning_budget: 1024,
-    chat_template_kwargs: { "enable_thinking": true }
+    max_tokens: 4096
   };
 
   let nimResponse;
@@ -109,44 +107,62 @@ export default async function handler(req) {
 
   const rawText = nimJson.choices?.[0]?.message?.content ?? '';
 
+  // ── Derive warna from kategori ────────────────────────────────────────────
+  function warnaFromKategori(k) {
+    if (k === 'ORGANIK' || k === 'ORGANIC')     return '#4A7C59';
+    if (k === 'B3'      || k === 'HAZARDOUS')   return '#C75C5C';
+    if (k === 'ANORGANIK' || k === 'INORGANIC') return '#5B7FA5';
+    return '#888888';
+  }
+
   let classified;
   try {
-    // Extract JSON from markdown block to avoid reasoning text parsing issues
-    const match = rawText.match(/```json([\s\S]*?)```/i);
-    const jsonString = match ? match[1].trim() : rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-    classified = JSON.parse(jsonString);
-    
-    // Schema validation and fallbacks
+    // Try direct JSON.parse first, then fall back to ```json block extraction
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText.trim());
+    } catch {
+      const match = rawText.match(/```json([\s\S]*?)```/i);
+      const jsonString = match
+        ? match[1].trim()
+        : rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(jsonString);
+    }
+    classified = parsed;
+
     const isErrorOrEmpty = ['TIDAK_TERDETEKSI', 'TIDAK_JELAS', 'NOT_DETECTED', 'UNCLEAR'].includes(classified.kategori);
+
+    // Always set warna from kategori (AI no longer returns it)
+    classified.warna = warnaFromKategori(classified.kategori);
+
     if (!isErrorOrEmpty) {
-      classified.warna = classified.warna || (classified.kategori === 'ORGANIK' || classified.kategori === 'ORGANIC' ? '#4A7C59' : classified.kategori === 'B3' || classified.kategori === 'HAZARDOUS' ? '#C75C5C' : '#5B7FA5');
       classified.nama_benda = classified.nama_benda || 'Unknown Object';
-      classified.confidence = classified.confidence || 'RENDAH';
-      
+      classified.confidence = typeof classified.confidence === 'number' ? classified.confidence : 0;
+      classified.deskripsi = classified.deskripsi || '';
+
       let matId = (classified.material_id || 'UNKNOWN').toUpperCase().trim();
       const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
       if (!lookupTable[matId]) matId = 'UNKNOWN';
       classified.waktu_terurai = lookupTable[matId];
-      classified.material_id = matId; // normalize it but keep it
-      classified.reasoning_summary = classified.reasoning_summary || 'Analyzed via image recognition.';
+      classified.material_id = matId;
     } else {
-      // Empty or error case mapping
-      const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
-      classified.waktu_terurai = "";
+      classified.waktu_terurai = '';
+      classified.confidence = typeof classified.confidence === 'number' ? classified.confidence : 0;
     }
   } catch {
     console.error('[classify] Failed to parse JSON output:', rawText);
     const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
-    // Return a partial failure rather than a 500 crash so UI handles it gracefully
     const errorResponse = {
-      kategori: 'TIDAK_JELAS',
+      kategori: isEnglish ? 'UNCLEAR' : 'TIDAK_JELAS',
       warna: '#888888',
-      nama_benda: 'Parse Error',
-      confidence: 'RENDAH',
+      nama_benda: isEnglish ? 'Parse Error' : 'Gagal Membaca',
+      material_id: 'UNKNOWN',
+      confidence: 0,
+      deskripsi: isEnglish
+        ? 'The AI returned an invalid format. Try again with better lighting.'
+        : 'AI mengembalikan format tidak valid. Coba lagi dengan pencahayaan lebih baik.',
+      tips: isEnglish ? 'Please try again.' : 'Silakan coba lagi.',
       waktu_terurai: lookupTable.UNKNOWN,
-      dampak: 'The AI provided an invalid format.',
-      tips: 'Please try again.',
-      reasoning_summary: 'We had trouble parsing the response. Please try moving closer or adjusting the lighting.'
     };
     return new Response(JSON.stringify(errorResponse), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
@@ -160,135 +176,51 @@ export default async function handler(req) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildPromptID() {
-  return `
-Kamu adalah sistem klasifikasi sampah berbasis AI yang sangat akurat.
-Langkah 1: Analisis gambar yang diberikan dan tuliskan sedikit penalaran tentang bahan dan objek yang kamu lihat.
-Langkah 2: Kembalikan objek JSON yang valid di dalam blok \`\`\`json ... \`\`\` sesuai skema di bawah ini. JANGAN berikan JSON tanpa blok \`\`\`json\`\`\`.
+  return `Kamu adalah AI klasifikasi sampah. Analisis gambar dan kembalikan HANYA JSON valid, tanpa teks lain.
 
-═══════════════════════════════════════════
-SKEMA JSON (wajib diikuti persis):
-═══════════════════════════════════════════
-{
-  "kategori"         : string,   // Satu dari: "ORGANIK" | "ANORGANIK" | "B3" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
-  "warna"            : string,   // Kode hex warna: ORGANIK="#4A7C59", ANORGANIK="#5B7FA5", B3="#C75C5C"
-  "nama_benda"       : string,   // Nama benda yang teridentifikasi, dalam Bahasa Indonesia (contoh: "Botol Plastik PET", "Kulit Pisang")
-  "material_id"      : string,   // WAJIB salah satu string persis dari DAFTAR MATERIAL_ID di bawah
-  "confidence"       : string,   // Tingkat keyakinan: "TINGGI" | "SEDANG" | "RENDAH"
-  "dampak"           : string,   // 1 kalimat singkat: dampak lingkungan jika dibuang ke tempat sampah umum
-  "tips"             : string,   // 1 kalimat singkat: cara pembuangan yang benar dan dapat langsung dilakukan
-  "reasoning_summary": string    // 1 kalimat singkat menjelaskan alasan benda ini dikategorikan demikian untuk meyakinkan pengguna
-}
+Skema JSON:
+{"kategori":"ORGANIK|ANORGANIK|B3|TIDAK_TERDETEKSI|TIDAK_JELAS","nama_benda":"string","material_id":"string","deskripsi":"string - 1 kalimat kenapa benda ini masuk kategori tersebut","confidence":0-100,"tips":"string - 1 kalimat cara buang yang benar"}
 
-═══════════════════════════════════════════
-DAFTAR MATERIAL_ID (Pilih SALAH SATU yang paling tepat):
-═══════════════════════════════════════════
-- PLASTIC_BOTTLE (Botol plastik PET)
-- PLASTIC_BAG (Kantong kresek, kemasan plastik lentur)
-- PAPER (Kertas, tisu, koran)
-- CARDBOARD (Kardus, karton)
-- GLASS (Kaca, botol beling)
-- ALUMINUM (Kaleng minuman aluminium)
-- TIN_STEEL (Kaleng besi/baja, sarden)
-- ORGANIC_FOOD (Sisa makanan, kulit buah, tulang)
-- ORGANIC_YARD (Daun, ranting, kayu alami)
-- STYROFOAM (Gabus styrofoam)
-- E_WASTE (Elektronik bekas, kabel, PCB)
-- TEXTILE (Kain, baju bekas, karpet)
-- BATTERY (Baterai bekas)
-- RUBBER (Karet, ban bekas)
-- WOOD (Kayu olahan, furnitur)
-- CERAMIC (Keramik, porselen)
-- COMPOSITE (Material campuran yang sulit dipisah, misal Tetra Pak atau mainan plastik-besi)
-- UNKNOWN (Benda tidak dikenali)
+MATERIAL_ID (pilih tepat satu):
+PLASTIC_BOTTLE, PLASTIC_BAG, PAPER, CARDBOARD, GLASS, ALUMINUM, TIN_STEEL, ORGANIC_FOOD, ORGANIC_YARD, STYROFOAM, E_WASTE, TEXTILE, BATTERY, RUBBER, WOOD, CERAMIC, COMPOSITE, UNKNOWN
 
-═══════════════════════════════════════════
-DEFINISI KATEGORI:
-═══════════════════════════════════════════
-• ORGANIK (#4A7C59)    — Bahan yang berasal dari makhluk hidup. Contoh: ORGANIC_FOOD, ORGANIC_YARD.
-• ANORGANIK (#5B7FA5)  — Bahan yang sulit terurai tapi aman. Contoh: PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM.
-                         PENTING: Tetra Pak adalah ANORGANIK (COMPOSITE). JANGAN masukkan elektronik ke sini.
-• B3 (#C75C5C)         — Bahan Berbahaya dan Beracun. Contoh: BATTERY, E_WASTE, botol obat/bahan kimia.
-                         PENTING MUTLAK: SEMUA BARANG ELEKTRONIK (kipas angin kecil/handheld fan, kabel, charger, HP, dsb) WAJIB diklasifikasikan sebagai B3 dan material_id E_WASTE. JANGAN mengklasifikasikan elektronik sebagai ANORGANIK.
+Kategori:
+- ORGANIK: bahan dari makhluk hidup (ORGANIC_FOOD, ORGANIC_YARD)
+- ANORGANIK: sulit terurai tapi aman (PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM, COMPOSITE untuk Tetra Pak)
+- B3: berbahaya/beracun (BATTERY, E_WASTE, bahan kimia)
 
-═══════════════════════════════════════════
-PENANGANAN KASUS TEPI:
-═══════════════════════════════════════════
-• Jika gambar TIDAK MENGANDUNG BENDA APAPUN (kosong, layar hitam):
-  Kembalikan: { "kategori": "TIDAK_TERDETEKSI", "warna": "#888888", "nama_benda": "", "material_id": "UNKNOWN", "confidence": "RENDAH", "dampak": "", "tips": "", "reasoning_summary": "" }
+ATURAN WAJIB: SEMUA elektronik (kipas, kabel, charger, HP, PCB) = B3 + E_WASTE. Elektronik BUKAN ANORGANIK.
 
-• Jika gambar terlalu blur atau tidak dapat diidentifikasi:
-  Kembalikan: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Tidak dapat diidentifikasi", "material_id": "UNKNOWN", "confidence": "RENDAH", "dampak": "Tidak dapat ditentukan karena gambar tidak cukup jelas.", "tips": "Coba ambil foto lebih dekat dengan pencahayaan yang baik.", "reasoning_summary": "" }
+Kasus tepi:
+- Gambar kosong/hitam: {"kategori":"TIDAK_TERDETEKSI","nama_benda":"","material_id":"UNKNOWN","deskripsi":"","confidence":0,"tips":""}
+- Gambar blur/tidak jelas: {"kategori":"TIDAK_JELAS","nama_benda":"Tidak dapat diidentifikasi","material_id":"UNKNOWN","deskripsi":"Gambar tidak cukup jelas untuk diidentifikasi.","confidence":0,"tips":"Coba foto lebih dekat dengan pencahayaan baik."}
+- Beberapa benda: klasifikasi yang paling dominan
+- Campuran tak terpisah: gunakan kategori paling berbahaya (B3>ANORGANIK>ORGANIK), material_id=COMPOSITE
 
-• Jika ada BEBERAPA BENDA, klasifikasi berdasarkan benda yang PALING DOMINAN.
-• Jika benda CAMPURAN (makanan dalam plastik), gunakan kategori yang PALING BERBAHAYA (B3 > ANORGANIK > ORGANIK) dan material_id COMPOSITE.
-
-Pastikan kamu mengeluarkan blok \`\`\`json ... \`\`\` di akhir responsmu.
-`.trim();
+confidence adalah angka 0-100. Kembalikan HANYA JSON, tanpa penjelasan.`;
 }
 
 function buildPromptEN() {
-  return `
-You are a highly accurate AI-powered waste classification system.
-Step 1: Analyze the provided image and write a brief reasoning about the materials and objects you see.
-Step 2: Return a valid JSON object inside a \`\`\`json ... \`\`\` block following the schema below. DO NOT return the JSON without the \`\`\`json\`\`\` block.
+  return `You are a waste classification AI. Analyze the image and return ONLY valid JSON, no other text.
 
-═══════════════════════════════════════════
-JSON SCHEMA (must be followed exactly):
-═══════════════════════════════════════════
-{
-  "kategori"         : string,   // One of: "ORGANIC" | "INORGANIC" | "HAZARDOUS" | "TIDAK_TERDETEKSI" | "TIDAK_JELAS"
-  "warna"            : string,   // Category color hex: ORGANIC="#4A7C59", INORGANIC="#5B7FA5", HAZARDOUS="#C75C5C"
-  "nama_benda"       : string,   // Name of the identified object in English (e.g. "PET Plastic Bottle")
-  "material_id"      : string,   // MUST be EXACTLY one of the strings from the MATERIAL_ID LIST below
-  "confidence"       : string,   // Confidence level: "HIGH" | "MEDIUM" | "LOW"
-  "dampak"           : string,   // 1 concise sentence: environmental impact if discarded in general waste
-  "tips"             : string,   // 1 concise actionable tip: correct disposal method
-  "reasoning_summary": string    // 1 concise sentence explaining why this item was categorized as such
-}
+JSON schema:
+{"kategori":"ORGANIC|INORGANIC|HAZARDOUS|NOT_DETECTED|UNCLEAR","nama_benda":"string","material_id":"string","deskripsi":"string - 1 sentence explaining why this item belongs in this category","confidence":0-100,"tips":"string - 1 actionable disposal sentence"}
 
-═══════════════════════════════════════════
-MATERIAL_ID LIST (Choose EXACTLY ONE that fits best):
-═══════════════════════════════════════════
-- PLASTIC_BOTTLE (PET plastic bottles)
-- PLASTIC_BAG (Plastic bags, flexible packaging)
-- PAPER (Paper, tissue, newspaper)
-- CARDBOARD (Cardboard boxes)
-- GLASS (Glass bottles, jars)
-- ALUMINUM (Aluminum cans)
-- TIN_STEEL (Steel/tin cans)
-- ORGANIC_FOOD (Food scraps, peels, bones)
-- ORGANIC_YARD (Leaves, twigs, natural wood)
-- STYROFOAM (Styrofoam cups/packaging)
-- E_WASTE (Old electronics, cables, PCBs)
-- TEXTILE (Clothing, fabrics, carpets)
-- BATTERY (Used batteries)
-- RUBBER (Rubber, tires)
-- WOOD (Treated/processed wood, furniture)
-- CERAMIC (Ceramics, porcelain)
-- COMPOSITE (Inseparable mixed materials, e.g., Tetra Pak, toys with plastic and metal)
-- UNKNOWN (Object unrecognizable)
+MATERIAL_ID (pick exactly one):
+PLASTIC_BOTTLE, PLASTIC_BAG, PAPER, CARDBOARD, GLASS, ALUMINUM, TIN_STEEL, ORGANIC_FOOD, ORGANIC_YARD, STYROFOAM, E_WASTE, TEXTILE, BATTERY, RUBBER, WOOD, CERAMIC, COMPOSITE, UNKNOWN
 
-═══════════════════════════════════════════
-CATEGORY DEFINITIONS:
-═══════════════════════════════════════════
-• ORGANIC (#4A7C59)    — Materials from living organisms. e.g., ORGANIC_FOOD, ORGANIC_YARD.
-• INORGANIC (#5B7FA5)  — Materials that don't decompose naturally but are safe. e.g., PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM.
-                         IMPORTANT: Tetra Paks are INORGANIC (COMPOSITE). DO NOT put electronics here.
-• HAZARDOUS (#C75C5C)  — Toxic waste. e.g., BATTERY, E_WASTE, chemical bottles.
-                         ABSOLUTE REQUIREMENT: ALL ELECTRONICS (handheld fans, cables, chargers, phones, etc.) MUST be classified as HAZARDOUS and material_id E_WASTE. DO NOT classify electronics as INORGANIC.
+Categories:
+- ORGANIC: from living organisms (ORGANIC_FOOD, ORGANIC_YARD)
+- INORGANIC: non-biodegradable but safe (PLASTIC_BOTTLE, PAPER, GLASS, ALUMINUM, STYROFOAM, COMPOSITE for Tetra Pak)
+- HAZARDOUS: toxic/dangerous (BATTERY, E_WASTE, chemicals)
 
-═══════════════════════════════════════════
-EDGE CASE HANDLING:
-═══════════════════════════════════════════
-• If the image CONTAINS NO OBJECT (blank image, black screen):
-  Return: { "kategori": "TIDAK_TERDETEKSI", "warna": "#888888", "nama_benda": "", "material_id": "UNKNOWN", "confidence": "LOW", "dampak": "", "tips": "", "reasoning_summary": "" }
+MANDATORY RULE: ALL electronics (fans, cables, chargers, phones, PCBs) = HAZARDOUS + E_WASTE. Electronics are NEVER INORGANIC.
 
-• If the image cannot be classified (too blurry, too dark, unrecognizable):
-  Return: { "kategori": "TIDAK_JELAS", "warna": "#888888", "nama_benda": "Cannot be identified", "material_id": "UNKNOWN", "confidence": "LOW", "dampak": "Cannot be determined as the image is not clear enough.", "tips": "Try taking a closer photo with better lighting.", "reasoning_summary": "" }
+Edge cases:
+- Empty/black image: {"kategori":"NOT_DETECTED","nama_benda":"","material_id":"UNKNOWN","deskripsi":"","confidence":0,"tips":""}
+- Blurry/unrecognizable: {"kategori":"UNCLEAR","nama_benda":"Cannot be identified","material_id":"UNKNOWN","deskripsi":"Image is not clear enough to identify.","confidence":0,"tips":"Try a closer photo with better lighting."}
+- Multiple objects: classify the most dominant one
+- Inseparable mix: use most hazardous category (HAZARDOUS>INORGANIC>ORGANIC), material_id=COMPOSITE
 
-• If there are MULTIPLE OBJECTS, classify based on the MOST DOMINANT item.
-• If the item is an INSEPARABLE MIX (e.g., food inside a plastic container), use the MOST HAZARDOUS category (HAZARDOUS > INORGANIC > ORGANIC) and use material_id COMPOSITE.
-
-Make sure to output the \`\`\`json ... \`\`\` block at the end of your response.
-`.trim();
+confidence is a number 0-100. Return ONLY JSON, no explanation.`;
 }

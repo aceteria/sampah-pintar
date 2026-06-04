@@ -3,7 +3,7 @@ import { t, setLang, toggleLang, getCurrentLang, translations } from './i18n.js'
 import { initCamera, captureFrame, stopCamera, isCameraActive, toggleCamera } from './camera.js';
 import { classify } from './classifier.js';
 import { initUI, switchScreen, showLoading, hideLoading, showError, hideError,
-         startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls, showFeedbackThanks } from './ui.js';
+         startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls, updateDateDisplay } from './ui.js';
 
 let els;
 let lastResult = null;
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const currentLang = getCurrentLang();
   setLang(currentLang);
   updateLangButtons(currentLang);
+  updateDateDisplay(currentLang);
   
   switchScreen('splash');
 
@@ -47,7 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
     els.btnLang.forEach(btn => {
       btn.addEventListener('click', () => {
         toggleLang();
-        updateLangButtons(getCurrentLang());
+        const newLang = getCurrentLang();
+        updateLangButtons(newLang);
+        updateDateDisplay(newLang);
       });
     });
   }
@@ -70,40 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (els.fileUpload) {
     els.fileUpload.addEventListener('change', handleFileUpload);
   }
-
-  // Initialize Gamification State
-  initGamificationState();
-
-  // Feedback Event Listeners
-  if (els.btnFeedbackYes) {
-    els.btnFeedbackYes.addEventListener('click', () => handleFeedback(true));
-  }
-  if (els.btnFeedbackNo) {
-    els.btnFeedbackNo.addEventListener('click', () => handleFeedback(false));
-  }
 });
-
-async function handleFeedback(isCorrect) {
-  showFeedbackThanks();
-  if (!lastResult || !lastImage) return;
-
-  try {
-    const payload = {
-      image: lastImage,
-      kategori: lastResult.kategori,
-      material_id: lastResult.material_id || 'UNKNOWN',
-      is_correct: isCorrect
-    };
-
-    fetch('/api/feedback', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(e => console.error('Feedback error:', e));
-  } catch (e) {
-    console.error('Feedback error:', e);
-  }
-}
 
 async function startCamera() {
   try {
@@ -138,7 +108,6 @@ async function runClassification(imageData, retryCount = 0) {
   if (retryCount === 0) {
     startFunFacts(translations[getCurrentLang()].fun_facts);
   } else {
-    // Show progress indicator text during retry
     const loadingText = document.querySelector('#loading-overlay h2');
     if (loadingText) {
       loadingText.textContent = getCurrentLang() === 'en' ? 'Retrying analysis...' : 'Mencoba ulang analisis...';
@@ -150,6 +119,7 @@ async function runClassification(imageData, retryCount = 0) {
     hideLoading();
     stopFunFacts();
     
+    // Handle not detected / unclear
     if (result.kategori === 'TIDAK_TERDETEKSI' || result.kategori === 'NOT_DETECTED') {
       showError(t('not_detected'));
       return;
@@ -163,15 +133,12 @@ async function runClassification(imageData, retryCount = 0) {
     lastResult = result;
     lastImage = imageData;
     
-    // Gamification step
-    handleGamification(result);
-    
-    renderResult(result, imageData, getCurrentLang());
+    const scanCount = incrementScanCount();
+    renderResult(result, imageData, getCurrentLang(), scanCount);
     switchScreen('result');
   } catch (err) {
     if (retryCount < 1) {
       console.warn('Classification failed, retrying once...', err);
-      // Retry once automatically
       return runClassification(imageData, retryCount + 1);
     }
     
@@ -182,65 +149,14 @@ async function runClassification(imageData, retryCount = 0) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Gamification Logic
-// ─────────────────────────────────────────────────────────────────────────────
-
-function initGamificationState() {
-  const today = new Date().toLocaleDateString();
-  let state = JSON.parse(localStorage.getItem('ecoscan_gamification') || '{}');
-  
-  if (state.date !== today) {
-    state = {
-      date: today,
-      user_weight_kg: 0.0,
-      user_items_count: 0,
-      base_school_score: Math.floor(Math.random() * 500) + 1000 // random base score (1000-1500)
-    };
-    localStorage.setItem('ecoscan_gamification', JSON.stringify(state));
+function incrementScanCount() {
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  let scans = JSON.parse(localStorage.getItem('sapi_scans') || '{"count": 0}');
+  if (scans.date !== today) {
+    scans = { date: today, count: 1 };
+  } else {
+    scans.count += 1;
   }
+  localStorage.setItem('sapi_scans', JSON.stringify(scans));
+  return scans.count;
 }
-
-function handleGamification(result) {
-  if (!result || !result.kategori) return;
-  if (result.kategori === 'TIDAK_TERDETEKSI' || result.kategori === 'TIDAK_JELAS') return;
-  if (result.kategori === 'NOT_DETECTED' || result.kategori === 'UNCLEAR') return;
-
-  const state = JSON.parse(localStorage.getItem('ecoscan_gamification') || '{}');
-  
-  // Assign weight based on category (B3: 0.5kg, Organik: 0.2kg, Anorganik: 0.1kg)
-  let weight = 0.1;
-  let catLower = result.kategori.toLowerCase();
-  
-  if (catLower.includes('b3') || catLower.includes('hazardous')) {
-    weight = 0.5;
-  } else if (catLower.includes('organik') || catLower.includes('organic')) {
-    weight = 0.2;
-  }
-  
-  // Format category string
-  let displayCategory = 'Anorganik';
-  if (catLower.includes('b3') || catLower.includes('hazardous')) displayCategory = 'B3';
-  if (catLower.includes('organik') || catLower.includes('organic')) displayCategory = 'Organik';
-
-  state.user_items_count += 1;
-  state.user_weight_kg += weight;
-  localStorage.setItem('ecoscan_gamification', JSON.stringify(state));
-
-  // School score = base + (user_items_count * 50)
-  const currentSchoolScore = state.base_school_score + (state.user_items_count * 50);
-
-  // Update UI
-  const gamificationStats = getEls().gamificationStats;
-  const gamificationDesc = getEls().gamificationDesc;
-
-  if (gamificationStats && gamificationDesc) {
-    const lang = getCurrentLang();
-    const itemsLabel = lang === 'en' ? 'Items Disposed Today' : 'Total Item Terbuang Hari Ini';
-    gamificationStats.textContent = `${itemsLabel}: ${state.user_items_count}`;
-    
-    // gamification_msg(weight, category, score)
-    gamificationDesc.textContent = t('gamification_msg')(weight.toFixed(1), displayCategory, currentSchoolScore.toLocaleString());
-  }
-}
-

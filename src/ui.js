@@ -1,4 +1,4 @@
-// src/ui.js
+// src/ui.js — SAPI Result UI (Redesigned)
 
 let els = {};
 
@@ -24,27 +24,21 @@ export function initUI() {
   els.loadingPreview = document.getElementById('loading-preview-img');
   els.funFact = document.getElementById('fun-fact');
   
+  // New result elements
   els.resultThumbnail = document.getElementById('result-thumbnail');
   els.categoryBadge = document.getElementById('category-badge');
   els.categoryIcon = document.getElementById('category-icon');
   els.categoryName = document.getElementById('category-name');
   els.itemName = document.getElementById('item-name');
-  els.reasoningSummary = document.getElementById('reasoning-summary');
+  els.resultDescription = document.getElementById('result-description');
   els.decomposeTime = document.getElementById('decompose-time');
-  els.gamificationStats = document.getElementById('gamification-stats');
-  els.gamificationDesc = document.getElementById('gamification-desc');
-  els.confidenceFill = document.getElementById('confidence-fill');
+  els.resultScans = document.getElementById('result-scans');
+  els.confidenceValue = document.getElementById('confidence-value');
+  els.confidenceRingFill = document.getElementById('confidence-ring-fill');
   els.errorMessage = document.getElementById('error-message');
   els.statDecompose = document.getElementById('stat-decompose');
-  els.statConfidence = document.getElementById('stat-confidence');
-  els.cardGamification = document.getElementById('card-gamification');
-
-  els.btnFeedbackYes = document.getElementById('btn-feedback-yes');
-  els.btnFeedbackNo = document.getElementById('btn-feedback-no');
-  els.feedbackActions = document.getElementById('feedback-actions');
-  els.feedbackTitle = document.getElementById('feedback-title');
-  els.feedbackThanks = document.getElementById('feedback-thanks');
-  els.feedbackSection = document.getElementById('feedback-section');
+  els.statScans = document.getElementById('stat-scans');
+  els.splashDate = document.getElementById('splash-date');
 
   return els;
 }
@@ -98,28 +92,15 @@ export function stopFunFacts() {
   }
 }
 
-// SVG icon templates (Phosphor-style, stroke 16)
+// SVG icon templates (Phosphor-style)
 const SVG_LEAF = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M216,40H176A104.11,104.11,0,0,0,72,144v24H48a8,8,0,0,0,0,16H72v24a8,8,0,0,0,16,0V184h24A104.11,104.11,0,0,0,216,80Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path></svg>';
 const SVG_RECYCLE = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M96,208H72A56,56,0,0,1,72,96l29.71,0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="60 128 92 96 124 128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline><path d="M160,208h24a56,56,0,0,0,48.49-84" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="196 128 164 160 132 128" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline><path d="M128,48a56.06,56.06,0,0,1,48.49,28" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></path><polyline points="160 96 128 48 96 96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="16"></polyline></svg>';
 const SVG_WARNING = '<svg width="18" height="18" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z" fill="currentColor"></path></svg>';
 
-export function resetFeedbackUI() {
-  if (els.feedbackActions) els.feedbackActions.classList.remove('hidden');
-  if (els.feedbackTitle) els.feedbackTitle.classList.remove('hidden');
-  if (els.feedbackThanks) els.feedbackThanks.classList.add('hidden');
-}
-
-export function showFeedbackThanks() {
-  if (els.feedbackActions) els.feedbackActions.classList.add('hidden');
-  if (els.feedbackTitle) els.feedbackTitle.classList.add('hidden');
-  if (els.feedbackThanks) els.feedbackThanks.classList.remove('hidden');
-}
-
-export function renderResult(data, imageSrc, lang) {
-  resetFeedbackUI();
+export function renderResult(data, imageSrc, lang, scanCount = 1) {
   if (els.resultThumbnail) els.resultThumbnail.src = imageSrc;
   
-  // Colors and Icons based on Kategori
+  // Category theming
   let iconSvg = SVG_LEAF;
   let color = 'var(--cat-organik)';
   let catText = data.kategori || 'ORGANIK';
@@ -140,6 +121,7 @@ export function renderResult(data, imageSrc, lang) {
     if (els.resultView) els.resultView.classList.add('theme-b3');
   }
 
+  // Badge
   if (els.categoryIcon) els.categoryIcon.innerHTML = iconSvg;
   if (els.categoryName) els.categoryName.textContent = catText;
   if (els.categoryBadge) {
@@ -147,33 +129,32 @@ export function renderResult(data, imageSrc, lang) {
     els.categoryBadge.style.backgroundColor = `color-mix(in srgb, ${color} 15%, transparent)`;
   }
   
+  // Item name and description
   if (els.itemName) els.itemName.textContent = data.nama_benda || '';
-  if (els.reasoningSummary) {
-    els.reasoningSummary.textContent = data.reasoning_summary || '';
-    els.reasoningSummary.style.display = data.reasoning_summary ? 'block' : 'none';
+  if (els.resultDescription) {
+    els.resultDescription.textContent = data.deskripsi || '';
+    els.resultDescription.style.display = data.deskripsi ? 'block' : 'none';
   }
+
+  // Detail pills
   if (els.decomposeTime) els.decomposeTime.textContent = data.waktu_terurai || '';
-  
-  // Set --card-accent on all themed elements
-  const accentEls = [els.statDecompose, els.statConfidence, els.cardGamification];
-  accentEls.forEach(el => {
-    if (el) el.style.setProperty('--card-accent', color);
-  });
-  
-  if (els.confidenceFill) {
-    let width = '25%'; // RENDAH/LOW
-    if (data.confidence === 'TINGGI' || data.confidence === 'HIGH') {
-      width = '90%';
-      els.confidenceFill.style.backgroundColor = 'var(--cat-organik)';
-    } else if (data.confidence === 'SEDANG' || data.confidence === 'MEDIUM') {
-      width = '55%';
-      els.confidenceFill.style.backgroundColor = '#F5A623';
-    } else {
-      els.confidenceFill.style.backgroundColor = 'var(--cat-b3)';
-    }
-    els.confidenceFill.style.width = '0%';
+  if (els.resultScans) els.resultScans.textContent = scanCount.toString();
+
+  // Confidence ring (percentage 0-100)
+  const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
+  const circumference = 326.73; // 2 * PI * 52
+  const offset = circumference - (confidence / 100) * circumference;
+
+  if (els.confidenceValue) {
+    els.confidenceValue.textContent = `${Math.round(confidence)}%`;
+  }
+  if (els.confidenceRingFill) {
+    // Reset then animate
+    els.confidenceRingFill.style.transition = 'none';
+    els.confidenceRingFill.style.strokeDashoffset = circumference;
     requestAnimationFrame(() => {
-      els.confidenceFill.style.width = width;
+      els.confidenceRingFill.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+      els.confidenceRingFill.style.strokeDashoffset = offset;
     });
   }
   
@@ -186,45 +167,19 @@ export function renderResult(data, imageSrc, lang) {
   });
 }
 
+export function updateDateDisplay(lang) {
+  if (!els.splashDate) return;
+  const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+  const locale = lang === 'id' ? 'id-ID' : 'en-US';
+  els.splashDate.textContent = new Date().toLocaleDateString(locale, dateOptions);
+}
+
 export function updateLangButtons(lang) {
   if (els.btnLang) {
     els.btnLang.forEach(btn => {
       btn.textContent = lang.toUpperCase();
     });
   }
-}
-
-function formatText(text) {
-  if (!text) return '';
-  const lines = text.split('\n');
-  let html = '';
-  let inList = false;
-  
-  lines.forEach(line => {
-    line = line.trim();
-    if (!line) return;
-    
-    if (line.match(/^[-*]\s/) || line.match(/^\d+\.\s/)) {
-      if (!inList) {
-        html += '<ul style="padding-left: 1.2rem; margin-top: 0.3rem; margin-bottom: 0.3rem;">';
-        inList = true;
-      }
-      let content = line.replace(/^[-*]\s/, '').replace(/^\d+\.\s/, '');
-      html += `<li style="margin-bottom: 0.2rem;">${content}</li>`;
-    } else {
-      if (inList) {
-        html += '</ul>';
-        inList = false;
-      }
-      html += `<p style="margin-bottom: 0.3rem;">${line}</p>`;
-    }
-  });
-  
-  if (inList) {
-    html += '</ul>';
-  }
-  
-  return html;
 }
 
 export function getEls() { return els; }
