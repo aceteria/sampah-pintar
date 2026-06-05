@@ -140,11 +140,13 @@ export default async function handler(req) {
       classified.confidence = typeof classified.confidence === 'number' ? classified.confidence : 0;
       classified.deskripsi = classified.deskripsi || '';
 
-      let matId = (classified.material_id || 'UNKNOWN').toUpperCase().trim();
-      const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
-      if (!lookupTable[matId]) matId = 'UNKNOWN';
-      classified.waktu_terurai = lookupTable[matId];
-      classified.material_id = matId;
+      if (!classified.waktu_terurai) {
+        let matId = (classified.material_id || 'UNKNOWN').toUpperCase().trim();
+        const lookupTable = isEnglish ? DECOMPOSITION_TIMES_EN : DECOMPOSITION_TIMES_ID;
+        if (!lookupTable[matId]) matId = 'UNKNOWN';
+        classified.waktu_terurai = lookupTable[matId];
+        classified.material_id = matId;
+      }
     } else {
       classified.waktu_terurai = '';
       classified.confidence = typeof classified.confidence === 'number' ? classified.confidence : 0;
@@ -179,7 +181,7 @@ function buildPromptID() {
   return `Kamu adalah AI klasifikasi sampah. Analisis gambar dan kembalikan HANYA JSON valid, tanpa teks lain.
 
 Skema JSON:
-{"kategori":"ORGANIK|ANORGANIK|B3|TIDAK_TERDETEKSI|TIDAK_JELAS","nama_benda":"string","material_id":"string","deskripsi":"string - 1 kalimat kenapa benda ini masuk kategori tersebut","confidence":0-100,"tips":"string - 1 kalimat cara buang yang benar"}
+{"kategori":"ORGANIK|ANORGANIK|B3|TIDAK_TERDETEKSI|TIDAK_JELAS","nama_benda":"string","material_id":"string","deskripsi":"string - 1 kalimat kenapa benda ini masuk kategori tersebut","confidence":0-100,"tips":"string - 1 kalimat cara buang yang benar","waktu_terurai":"string - spesifik estimasi waktu benda ini terurai (misal: '2 minggu', '400 tahun')"}
 
 MATERIAL_ID (pilih tepat satu):
 PLASTIC_BOTTLE, PLASTIC_BAG, PAPER, CARDBOARD, GLASS, ALUMINUM, TIN_STEEL, ORGANIC_FOOD, ORGANIC_YARD, STYROFOAM, E_WASTE, TEXTILE, BATTERY, RUBBER, WOOD, CERAMIC, COMPOSITE, UNKNOWN
@@ -192,8 +194,8 @@ Kategori:
 ATURAN WAJIB: SEMUA elektronik (kipas, kabel, charger, HP, PCB) = B3 + E_WASTE. Elektronik BUKAN ANORGANIK.
 
 Kasus tepi:
-- Gambar kosong/hitam: {"kategori":"TIDAK_TERDETEKSI","nama_benda":"","material_id":"UNKNOWN","deskripsi":"","confidence":0,"tips":""}
-- Gambar blur/tidak jelas: {"kategori":"TIDAK_JELAS","nama_benda":"Tidak dapat diidentifikasi","material_id":"UNKNOWN","deskripsi":"Gambar tidak cukup jelas untuk diidentifikasi.","confidence":0,"tips":"Coba foto lebih dekat dengan pencahayaan baik."}
+- Gambar kosong/hitam: {"kategori":"TIDAK_TERDETEKSI","nama_benda":"","material_id":"UNKNOWN","deskripsi":"","confidence":0,"tips":"","waktu_terurai":""}
+- Gambar blur/tidak jelas: {"kategori":"TIDAK_JELAS","nama_benda":"Tidak dapat diidentifikasi","material_id":"UNKNOWN","deskripsi":"Gambar tidak cukup jelas untuk diidentifikasi.","confidence":0,"tips":"Coba foto lebih dekat dengan pencahayaan baik.","waktu_terurai":""}
 - Beberapa benda: klasifikasi yang paling dominan
 - Campuran tak terpisah: gunakan kategori paling berbahaya (B3>ANORGANIK>ORGANIK), material_id=COMPOSITE
 
@@ -204,7 +206,7 @@ function buildPromptEN() {
   return `You are a waste classification AI. Analyze the image and return ONLY valid JSON, no other text.
 
 JSON schema:
-{"kategori":"ORGANIC|INORGANIC|HAZARDOUS|NOT_DETECTED|UNCLEAR","nama_benda":"string","material_id":"string","deskripsi":"string - 1 sentence explaining why this item belongs in this category","confidence":0-100,"tips":"string - 1 actionable disposal sentence"}
+{"kategori":"ORGANIC|INORGANIC|HAZARDOUS|NOT_DETECTED|UNCLEAR","nama_benda":"string","material_id":"string","deskripsi":"string - 1 sentence explaining why this item belongs in this category","confidence":0-100,"tips":"string - 1 actionable disposal sentence","waktu_terurai":"string - specific estimated decomposition time for this object (e.g. '2 weeks', '400 years')"}
 
 MATERIAL_ID (pick exactly one):
 PLASTIC_BOTTLE, PLASTIC_BAG, PAPER, CARDBOARD, GLASS, ALUMINUM, TIN_STEEL, ORGANIC_FOOD, ORGANIC_YARD, STYROFOAM, E_WASTE, TEXTILE, BATTERY, RUBBER, WOOD, CERAMIC, COMPOSITE, UNKNOWN
@@ -217,8 +219,8 @@ Categories:
 MANDATORY RULE: ALL electronics (fans, cables, chargers, phones, PCBs) = HAZARDOUS + E_WASTE. Electronics are NEVER INORGANIC.
 
 Edge cases:
-- Empty/black image: {"kategori":"NOT_DETECTED","nama_benda":"","material_id":"UNKNOWN","deskripsi":"","confidence":0,"tips":""}
-- Blurry/unrecognizable: {"kategori":"UNCLEAR","nama_benda":"Cannot be identified","material_id":"UNKNOWN","deskripsi":"Image is not clear enough to identify.","confidence":0,"tips":"Try a closer photo with better lighting."}
+- Empty/black image: {"kategori":"NOT_DETECTED","nama_benda":"","material_id":"UNKNOWN","deskripsi":"","confidence":0,"tips":"","waktu_terurai":""}
+- Blurry/unrecognizable: {"kategori":"UNCLEAR","nama_benda":"Cannot be identified","material_id":"UNKNOWN","deskripsi":"Image is not clear enough to identify.","confidence":0,"tips":"Try a closer photo with better lighting.","waktu_terurai":""}
 - Multiple objects: classify the most dominant one
 - Inseparable mix: use most hazardous category (HAZARDOUS>INORGANIC>ORGANIC), material_id=COMPOSITE
 

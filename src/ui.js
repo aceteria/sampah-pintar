@@ -12,6 +12,7 @@ export function initUI() {
   els.btnScan = document.getElementById('btn-scan');
   els.btnSwitchCamera = document.getElementById('btn-switch-camera');
   els.btnScanAgain = document.getElementById('btn-scan-again');
+  els.btnHome = document.getElementById('btn-home');
   els.btnRetry = document.getElementById('btn-retry');
   els.btnErrorCancel = document.getElementById('btn-error-cancel');
   
