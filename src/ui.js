@@ -39,6 +39,11 @@ export function initUI() {
   els.statDecompose = document.getElementById('stat-decompose');
   els.statScans = document.getElementById('stat-scans');
   els.splashDate = document.getElementById('splash-date');
+  
+  // Splash gamification
+  els.splashRingFill = document.getElementById('splash-ring-fill');
+  els.splashScanCount = document.getElementById('splash-scan-count');
+  els.sapiMascot = document.getElementById('sapi-mascot');
 
   return els;
 }
@@ -172,6 +177,31 @@ export function updateDateDisplay(lang) {
   const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
   const locale = lang === 'id' ? 'id-ID' : 'en-US';
   els.splashDate.textContent = new Date().toLocaleDateString(locale, dateOptions);
+}
+
+export function updateSplashGamification(scanCount) {
+  if (!els.splashScanCount || !els.splashRingFill || !els.sapiMascot) return;
+  
+  const GOAL = 100;
+  const count = Math.min(scanCount, GOAL); // Cap visually at 100
+  
+  // Update text
+  els.splashScanCount.textContent = count;
+  
+  // Update ring (circumference is 2 * PI * 110 = 691.15)
+  const circumference = 691.15;
+  const offset = circumference - (count / GOAL) * circumference;
+  
+  // Ensure animation plays smoothly
+  setTimeout(() => {
+    els.splashRingFill.style.strokeDashoffset = offset;
+  }, 100);
+  
+  // Update cow level
+  els.sapiMascot.className = 'cow-avatar'; // reset
+  if (count >= 50) els.sapiMascot.classList.add('cow-level-3');
+  else if (count >= 25) els.sapiMascot.classList.add('cow-level-2');
+  else els.sapiMascot.classList.add('cow-level-1');
 }
 
 export function updateLangButtons(lang) {

@@ -158,7 +158,15 @@ body {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: linear-gradient(160deg, #F5F0E8 0%, #EBF5EE 100%);
+  background: linear-gradient(160deg, #F5F0E8 0%, #EBF5EE 50%, #F5F0E8 100%);
+  background-size: 200% 200%;
+  animation: breathingBg 10s ease infinite;
+}
+
+@keyframes breathingBg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .splash-container {
@@ -211,60 +219,148 @@ body {
   align-items: center;
 }
 
-.glass-badge {
+.particles-container {
   position: absolute;
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 32px rgba(45, 59, 45, 0.08);
-  padding: 1rem 1.5rem;
-  border-radius: 24px;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.particle {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0.15;
+}
+
+.particle-1 { width: 8px; height: 8px; left: 10%; bottom: -10px; animation: floatUp 15s infinite linear; }
+.particle-2 { width: 12px; height: 12px; left: 30%; bottom: -10px; animation: floatUp 25s infinite linear 2s; }
+.particle-3 { width: 6px; height: 6px; left: 60%; bottom: -10px; animation: floatUp 18s infinite linear 5s; }
+.particle-4 { width: 10px; height: 10px; left: 80%; bottom: -10px; animation: floatUp 22s infinite linear 1s; }
+.particle-5 { width: 14px; height: 14px; left: 90%; bottom: -10px; animation: floatUp 30s infinite linear 8s; }
+
+@keyframes floatUp {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.15; }
+  90% { opacity: 0.15; }
+  100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+}
+
+.mascot-container {
+  position: relative;
+  width: 260px;
+  height: 260px;
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 0.75rem;
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 1.1rem;
+  flex-direction: column;
 }
 
-.glass-badge svg {
+.milestone-ring {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  transform: rotate(-90deg);
+  z-index: 1;
+}
+
+.milestone-ring-bg {
+  fill: none;
+  stroke: rgba(74, 124, 89, 0.1);
+  stroke-width: 14;
+}
+
+.milestone-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 691.15;
+  stroke-dashoffset: 691.15;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.milestone-label {
+  position: absolute;
+  bottom: -10px;
+  z-index: 3;
+  padding: 0.5rem 1.2rem;
+  font-weight: 700;
   color: var(--accent);
+  box-shadow: var(--shadow-sm);
+  background: rgba(255, 255, 255, 0.85);
 }
 
-.badge-1 {
-  top: 10%;
-  left: 0%;
-  animation: floatBadge1 6s ease-in-out infinite;
+.milestone-goal {
+  color: var(--text-light);
+  font-weight: 500;
+  font-size: 0.85em;
 }
 
-.badge-2 {
-  bottom: 10%;
-  right: 0%;
-  animation: floatBadge2 7s ease-in-out infinite reverse;
+.cow-avatar {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: float 4s ease-in-out infinite;
 }
 
-.badge-3 {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: floatBadge3 8s ease-in-out infinite;
+.pixel-cow {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes floatBadge1 {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50% { transform: translateY(-15px) rotate(2deg); }
+.cow-body {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  width: 40px;
+  height: 24px;
+  background-color: white;
+  border: 4px solid var(--text-primary);
+  border-radius: 4px;
+}
+.cow-body::before {
+  content: '';
+  position: absolute;
+  top: 4px; left: 8px; width: 12px; height: 12px;
+  background-color: var(--text-primary);
+}
+.cow-head {
+  position: absolute;
+  bottom: 24px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  background-color: white;
+  border: 4px solid var(--text-primary);
+  border-radius: 4px;
+}
+.cow-head::after {
+  content: '';
+  position: absolute;
+  top: 4px; right: 4px; width: 4px; height: 4px;
+  background-color: var(--text-primary);
+}
+.cow-head::before {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 4px; width: 12px; height: 8px;
+  background-color: #FFA1A1;
+  border: 2px solid var(--text-primary);
+  transition: background-color 0.5s;
 }
 
-@keyframes floatBadge2 {
-  0%, 100% { transform: translateY(0) rotate(3deg); }
-  50% { transform: translateY(-20px) rotate(-1deg); }
-}
-
-@keyframes floatBadge3 {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -60%) scale(1.05); }
-}
+/* Cow Levels */
+.cow-level-2 .pixel-cow { transform: scale(1.1); }
+.cow-level-3 .pixel-cow { transform: scale(1.25); }
+.cow-level-3 .cow-head::before { background-color: var(--accent-light); }
 
 .btn-primary {
   background: var(--accent);
@@ -281,6 +377,13 @@ body {
   transition: all 0.25s ease;
   display: inline-block;
   font-family: inherit;
+  animation: pulseButton 2.5s infinite;
+}
+
+@keyframes pulseButton {
+  0% { box-shadow: 0 0 0 0 rgba(74, 124, 89, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(74, 124, 89, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(74, 124, 89, 0); }
 }
 
 .btn-primary:hover {

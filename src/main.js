@@ -3,7 +3,7 @@ import { t, setLang, toggleLang, getCurrentLang, translations } from './i18n.js'
 import { initCamera, captureFrame, stopCamera, isCameraActive, toggleCamera } from './camera.js';
 import { classify } from './classifier.js';
 import { initUI, switchScreen, showLoading, hideLoading, showError, hideError,
-         startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls, updateDateDisplay } from './ui.js';
+         startFunFacts, stopFunFacts, renderResult, updateLangButtons, getEls, updateDateDisplay, updateSplashGamification } from './ui.js';
 
 let els;
 let lastResult = null;
@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setLang(currentLang);
   updateLangButtons(currentLang);
   updateDateDisplay(currentLang);
+  updateSplashGamification(getScanCount());
   
   switchScreen('splash');
 
@@ -41,6 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
     els.btnScanAgain.addEventListener('click', async () => {
       switchScreen('camera');
       await startCamera();
+    });
+  }
+
+  if (els.btnHome) {
+    els.btnHome.addEventListener('click', () => {
+      updateDateDisplay(getCurrentLang());
+      updateSplashGamification(getScanCount());
+      switchScreen('splash');
     });
   }
 
@@ -134,6 +143,7 @@ async function runClassification(imageData, retryCount = 0) {
     lastImage = imageData;
     
     const scanCount = incrementScanCount();
+    updateSplashGamification(scanCount);
     renderResult(result, imageData, getCurrentLang(), scanCount);
     switchScreen('result');
   } catch (err) {
@@ -158,5 +168,14 @@ function incrementScanCount() {
     scans.count += 1;
   }
   localStorage.setItem('sapi_scans', JSON.stringify(scans));
+  return scans.count;
+}
+
+function getScanCount() {
+  const today = new Date().toLocaleDateString('en-CA');
+  let scans = JSON.parse(localStorage.getItem('sapi_scans') || '{"count": 0}');
+  if (scans.date !== today) {
+    return 0;
+  }
   return scans.count;
 }
